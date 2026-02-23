@@ -1,0 +1,30 @@
+return {
+    name = "Lock & Key",
+    act  = "III",
+    storyPre  = "Two doors. Two pressure plates.\nSequence matters.",
+    storyPost = "Security override successful.",
+    startX = 100, startY = 340,
+    walls = {
+        {x=40,   y=120, w=20,   h=660, type="normal"},
+        {x=60,   y=120, w=1000, h=20,  type="normal"},
+        {x=60,   y=760, w=1000, h=20,  type="normal"},
+        {x=1040, y=140, w=20,   h=620, type="normal"},
+        {x=280,  y=140, w=20,   h=420, type="door",   id="door_1", open=false},
+        {x=280,  y=620, w=20,   h=140, type="normal"},
+        {x=140,  y=520, w=120,  h=120, type="button", target="door_1"},
+        {x=160,  y=240, w=70,   h=70,  type="pallet"},
+        {x=280,  y=700, w=200,  h=20,  type="spikes", facing="up"},
+        {x=560,  y=300, w=20,   h=460, type="door",   id="door_2", open=false},
+        {x=560,  y=140, w=20,   h=120, type="normal"},
+        {x=380,  y=500, w=120,  h=120, type="button", target="door_2"},
+        {x=380,  y=200, w=70,   h=70,  type="pallet"},
+        {x=760,  y=200, w=20,   h=360, type="breakable"},
+        {x=760,  y=620, w=20,   h=140, type="normal"},
+        {x=600,  y=160, w=60,   h=60,  type="portal_a"},
+        {x=900,  y=560, w=60,   h=60,  type="portal_b"},
+        {x=900,  y=320, w=100,  h=100, type="exit"},
+    },
+    texts = {
+        {x=100, y=420, text="TWO DOORS\nTWO KEYS"},
+    }
+}

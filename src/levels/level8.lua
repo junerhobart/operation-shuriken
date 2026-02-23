@@ -1,0 +1,30 @@
+return {
+    name = "Chain Reaction",
+    act  = "II",
+    storyPre  = "Three walls. One angle.\nPlan before you shoot.",
+    storyPost = "Demolition sequence complete.",
+    startX = 100, startY = 440,
+    walls = {
+        {x=40,  y=160, w=20,  h=580, type="normal"},
+        {x=60,  y=160, w=940, h=20,  type="normal"},
+        {x=60,  y=720, w=940, h=20,  type="normal"},
+        {x=980, y=180, w=20,  h=540, type="normal"},
+        {x=240, y=200, w=20,  h=360, type="breakable"},
+        {x=240, y=620, w=20,  h=100, type="normal"},
+        {x=440, y=360, w=20,  h=360, type="breakable"},
+        {x=440, y=180, w=20,  h=140, type="normal"},
+        {x=640, y=200, w=20,  h=320, type="breakable"},
+        {x=640, y=580, w=20,  h=140, type="normal"},
+        {x=60,  y=700, w=180, h=20,  type="spikes", facing="up"},
+        {x=440, y=700, w=200, h=20,  type="spikes", facing="up"},
+        {x=700, y=700, w=160, h=20,  type="spikes", facing="up"},
+        {x=820, y=320, w=20,  h=200, type="breakable"},
+        {x=860, y=440, w=100, h=100, type="exit"},
+    },
+    texts = {
+        {x=100, y=540, text="SMASH\nTHROUGH"},
+        {x=240, y=280, text="FRAGILE"},
+        {x=440, y=450, text="FRAGILE"},
+        {x=640, y=280, text="FRAGILE"},
+    }
+}

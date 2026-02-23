@@ -1,0 +1,3 @@
+build/
+*.love
+.DS_Store
