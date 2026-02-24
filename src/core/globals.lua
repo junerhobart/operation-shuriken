@@ -8,6 +8,8 @@ buttons       = {}
 shake         = 0
 victory       = false
 victoryTime   = 0
+deathTime     = 0
+deathPending  = false
 
 victoryButtons = {
     continue = {x=0, y=0, w=0, h=0, hovered=false},

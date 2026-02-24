@@ -25,6 +25,8 @@ function resetGame(levelData)
     if not particleSystem then particleSystem = particleModule.new() end
     prevButtonStates = {}
     victory = false
+    deathPending = false
+    deathTime = 0
     shake   = 0
     camX, camY = player.x, player.y
     camZoom = 1.0
@@ -52,6 +54,8 @@ function loadLevel(n)
     if not particleSystem then particleSystem = particleModule.new() end
     prevButtonStates = {}
     victory = false
+    deathPending = false
+    deathTime = 0
     shake   = 0
     camX, camY = player.x, player.y
     camZoom = 1.0

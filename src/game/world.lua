@@ -71,8 +71,8 @@ function world.new(levelData)
 
                 local speed = math.sqrt(p.vx * p.vx + p.vy * p.vy)
                 if speed > 0 then
-                    local substeps = math.max(1, math.ceil(speed * dt / 10))
-                    substeps = math.min(substeps, 8)
+                    local substeps = math.max(1, math.ceil(speed * dt / 4))
+                    substeps = math.min(substeps, 20)
                     local subDt = dt / substeps
 
                     for step = 1, substeps do
@@ -279,53 +279,99 @@ function world.new(levelData)
                 local col    = C.COLOR_SPIKES
                 local facing = w.facing or "up"
 
+                local function hasWallAtBase(sp, dir)
+                    local testX, testY, testW, testH
+                    local margin = 4
+                    if dir == "up" then
+                        testX, testY, testW, testH = sp.x, sp.y + sp.h - margin, sp.w, margin * 2
+                    elseif dir == "down" then
+                        testX, testY, testW, testH = sp.x, sp.y - margin, sp.w, margin * 2
+                    elseif dir == "left" then
+                        testX, testY, testW, testH = sp.x + sp.w - margin, sp.y, margin * 2, sp.h
+                    else
+                        testX, testY, testW, testH = sp.x - margin, sp.y, margin * 2, sp.h
+                    end
+                    for _, other in ipairs(self.walls) do
+                        if other ~= sp and other.type == "normal" then
+                            if testX < other.x + other.w and testX + testW > other.x
+                               and testY < other.y + other.h and testY + testH > other.y then
+                                return true
+                            end
+                        end
+                    end
+                    return false
+                end
+
+                local baseAttached = hasWallAtBase(w, facing)
+                local doubleSided = not baseAttached
+
                 if w.w <= w.h then
-                    -- Vertical strip — triangles point left or right
-                    local tipX  = facing == "left"  and w.x          or (w.x + w.w)
-                    local baseX = facing == "left"  and (w.x + w.w)  or w.x
                     local n     = math.max(1, math.floor(w.h / 16))
                     local pitch = w.h / n
                     local half  = pitch * 0.44
 
-                    -- thin base bar
-                    love.graphics.setColor(col[1], col[2], col[3], 0.55)
-                    if facing == "left" then
-                        love.graphics.rectangle("fill", w.x + w.w - 2, w.y, 2, w.h)
+                    if doubleSided then
+                        love.graphics.setColor(col)
+                        for i = 0, n - 1 do
+                            local ty = w.y + (i + 0.5) * pitch
+                            love.graphics.polygon("fill",
+                                w.x + w.w, ty - half,
+                                w.x, ty,
+                                w.x + w.w, ty + half)
+                        end
+                        for i = 0, n - 1 do
+                            local ty = w.y + i * pitch
+                            love.graphics.polygon("fill",
+                                w.x, ty - half,
+                                w.x + w.w, ty,
+                                w.x, ty + half)
+                        end
                     else
-                        love.graphics.rectangle("fill", w.x, w.y, 2, w.h)
-                    end
+                        local tipX  = facing == "left" and w.x or (w.x + w.w)
+                        local baseX = facing == "left" and (w.x + w.w) or w.x
 
-                    love.graphics.setColor(col)
-                    for i = 0, n - 1 do
-                        local ty = w.y + (i + 0.5) * pitch
-                        love.graphics.polygon("fill",
-                            baseX, ty - half,
-                            tipX,  ty,
-                            baseX, ty + half)
+                        love.graphics.setColor(col[1], col[2], col[3], 0.55)
+                        love.graphics.rectangle("fill", baseX - 1, w.y, 2, w.h)
+
+                        love.graphics.setColor(col)
+                        for i = 0, n - 1 do
+                            local ty = w.y + (i + 0.5) * pitch
+                            love.graphics.polygon("fill", baseX, ty - half, tipX, ty, baseX, ty + half)
+                        end
                     end
                 else
-                    -- Horizontal strip — triangles point up or down
-                    local tipY  = facing == "up"   and w.y          or (w.y + w.h)
-                    local baseY = facing == "up"   and (w.y + w.h)  or w.y
                     local n     = math.max(1, math.floor(w.w / 16))
                     local pitch = w.w / n
                     local half  = pitch * 0.44
 
-                    -- thin base bar
-                    love.graphics.setColor(col[1], col[2], col[3], 0.55)
-                    if facing == "up" then
-                        love.graphics.rectangle("fill", w.x, w.y + w.h - 2, w.w, 2)
+                    if doubleSided then
+                        love.graphics.setColor(col)
+                        for i = 0, n - 1 do
+                            local tx = w.x + (i + 0.5) * pitch
+                            love.graphics.polygon("fill",
+                                tx - half, w.y + w.h,
+                                tx, w.y,
+                                tx + half, w.y + w.h)
+                        end
+                        for i = 0, n - 1 do
+                            local tx = w.x + i * pitch
+                            love.graphics.polygon("fill",
+                                tx - half, w.y,
+                                tx, w.y + w.h,
+                                tx + half, w.y)
+                        end
                     else
-                        love.graphics.rectangle("fill", w.x, w.y, w.w, 2)
-                    end
+                        local tipY  = facing == "up" and w.y or (w.y + w.h)
+                        local baseY = facing == "up" and (w.y + w.h) or w.y
 
-                    love.graphics.setColor(col)
-                    for i = 0, n - 1 do
-                        local tx = w.x + (i + 0.5) * pitch
-                        love.graphics.polygon("fill",
-                            tx - half, baseY,
-                            tx,        tipY,
-                            tx + half, baseY)
+                        love.graphics.setColor(col[1], col[2], col[3], 0.55)
+                        love.graphics.rectangle("fill", w.x, baseY - 1, w.w, 2)
+
+                        love.graphics.setColor(col)
+                        for i = 0, n - 1 do
+                            local tx = w.x + (i + 0.5) * pitch
+                            love.graphics.polygon("fill", tx - half, baseY, tx, tipY, tx + half, baseY)
+                        end
                     end
                 end
             end

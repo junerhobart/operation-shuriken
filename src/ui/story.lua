@@ -71,3 +71,39 @@ function drawStory()
         love.graphics.printf(hint, 0, cy + unit * 2.0, w, "center")
     end
 end
+
+function drawDeath()
+    local w, h  = love.graphics.getDimensions()
+    local scale = getUIScale()
+    local dt    = deathTime or 0
+
+    local overlayAlpha = math.min(dt * 4, 0.65)
+    love.graphics.setColor(0.08, 0.02, 0.02, overlayAlpha)
+    love.graphics.rectangle("fill", 0, 0, w, h)
+
+    local cy = h / 2
+
+    local titleP = math.min((dt - 0.1) * 4, 1)
+    if titleP > 0 then
+        local bounce = 1 + (1 - titleP) * math.sin(titleP * math.pi) * 0.15
+        love.graphics.setFont(fonts.large)
+        local fh = fonts.large:getHeight()
+        love.graphics.push()
+        love.graphics.translate(w/2, cy - fh/2)
+        love.graphics.scale(bounce, bounce)
+        local pulse = math.sin(love.timer.getTime() * 3) * 0.08
+        love.graphics.setColor(0.85, 0.12, 0.12, titleP * (0.9 + pulse))
+        love.graphics.printf("DESTROYED", -w/2, 0, w, "center")
+        love.graphics.pop()
+    end
+
+    local hintP = math.min((dt - 0.6) * 3, 1)
+    if hintP > 0 then
+        local blink = math.sin(love.timer.getTime() * 2.5) * 0.25 + 0.75
+        local isMobile = love.system.getOS() == "iOS" or love.system.getOS() == "Android"
+        local hint = isMobile and "Tap to retry" or "Tap or press Space to retry"
+        love.graphics.setFont(fonts.main)
+        love.graphics.setColor(0.75, 0.35, 0.35, blink * hintP)
+        love.graphics.printf(hint, 0, cy + 60 * scale, w, "center")
+    end
+end

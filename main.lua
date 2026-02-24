@@ -164,9 +164,13 @@ function love.update(dt)
         particleSystem.spawnVictory(player.x, player.y)
         love.resize(love.graphics.getDimensions())
     end
-    if player.dead then
+    if player.dead and not deathPending then
+        deathPending = true
+        deathTime = 0
         sounds.death:stop(); sounds.death:play()
-        loadLevel(currentLevel)
+    end
+    if deathPending then
+        deathTime = deathTime + dt
     end
 end
 
@@ -225,6 +229,7 @@ function love.draw()
         love.graphics.printf(math.floor(camZoom * 100) .. "%", w - 90, h - 36, 80, "right")
     end
     if victory then drawVictory() end
+    if deathPending then drawDeath() end
     drawLetterbox()
 end
 

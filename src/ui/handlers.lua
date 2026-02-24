@@ -69,6 +69,15 @@ function love.mousepressed(x, y, button)
         editorMousePressed(x, y, button); return
     end
 
+    if deathPending and button == 1 then
+        if deathTime > 0.5 then
+            sounds.click:stop(); sounds.click:play()
+            deathPending = false; deathTime = 0
+            loadLevel(currentLevel)
+        end
+        return
+    end
+
     if victory and button == 1 then
         local vb = victoryButtons
         local function inVB(b) return x >= b.x and x <= b.x + b.w and y >= b.y and y <= b.y + b.h end
@@ -91,7 +100,7 @@ function love.mousepressed(x, y, button)
         return
     end
 
-    if not victory and button == 1 then
+    if not victory and not deathPending and button == 1 then
         pendingDragX = x; pendingDragY = y
     end
 end
@@ -172,7 +181,7 @@ function love.mousereleased(x, y, button)
 
     if state == "menu" or state == "options" then return end
     pendingDragX = nil; pendingDragY = nil
-    if not victory and button == 1 then
+    if not victory and not deathPending and button == 1 then
         local r = player.releaseDrag()
         if r > 0 then shake = math.max(shake, r * 6) end
     end
@@ -204,6 +213,18 @@ function love.keypressed(key)
                 end
             end
         elseif key == "escape" then
+            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0
+        end
+        return
+    end
+
+    if state == "game" and deathPending then
+        if key == "space" or key == "return" or key == "r" then
+            sounds.click:stop(); sounds.click:play()
+            deathPending = false; deathTime = 0
+            loadLevel(currentLevel)
+        elseif key == "escape" then
+            deathPending = false; deathTime = 0
             state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0
         end
         return

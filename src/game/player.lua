@@ -19,6 +19,7 @@ local whiteShurikenShader = love.graphics.newShader([[
 ]])
 
 local portalCooldown = 0
+local simulating = false
 
 function player.new(x, y)
     portalCooldown = 0
@@ -93,7 +94,7 @@ function player.new(x, y)
                                 if math.abs(dot) > C.PLAYER_BREAK_THRESHOLD then
                                     if ps then ps.spawnBreak(w.x, w.y, w.w, w.h, C.COLOR_BREAKABLE) end
                                     table.remove(world.walls, i)
-                                    breakSound:stop(); breakSound:play()
+                                    if not simulating then breakSound:stop(); breakSound:play() end
                                     should_check = false
                                 end
                             elseif w.type == "pallet" then
@@ -128,7 +129,7 @@ function player.new(x, y)
                                             self.x = other.x + other.w/2
                                             self.y = other.y + other.h/2
                                             portalCooldown = 0.8
-                                            bounceSound:stop(); bounceSound:play()
+                                            if not simulating then bounceSound:stop(); bounceSound:play() end
 
                                             local hitTarget, tnx, tny, tmtv = physics.circleVsAABB(self.x, self.y, self.radius, other.x, other.y, other.w, other.h)
                                             if hitTarget then
@@ -152,9 +153,11 @@ function player.new(x, y)
                                 local dot = self.vx * nx + self.vy * ny
                                 local impactSpeed = math.abs(dot)
                                 if impactSpeed > 80 then
-                                    bounceSound:setVolume(math.min(impactSpeed / 800, 1) * 0.5)
-                                    bounceSound:stop()
-                                    bounceSound:play()
+                                    if not simulating then
+                                        bounceSound:setVolume(math.min(impactSpeed / 800, 1) * 0.5)
+                                        bounceSound:stop()
+                                        bounceSound:play()
+                                    end
                                     if ps then ps.spawnImpact(self.x, self.y, nx, ny, impactSpeed) end
                                 end
                                 self.vx = (self.vx - 2 * dot * nx) * C.PLAYER_BOUNCE_RETENTION
@@ -218,164 +221,116 @@ function player.new(x, y)
 
             if dist > 10 then
 
-                local broken       = {}
-                local svx = -px * dist * C.PLAYER_LAUNCH_POWER
-                local svy = -py * dist * C.PLAYER_LAUNCH_POWER
-                local spx, spy     = self.x, self.y
-
-                local points       = {{x=spx, y=spy, broke=false, teleport=false}}
-                local palletPoints = {}
-                local playerAfterPalletPoints = {}
-                local breakableTargets = {}
-                local spikeHit     = nil
-                local hitPallet    = false
-                local hitExit      = false
-                local simPCooldown = 0
-
                 local simFDt    = 1 / 60
                 local maxFrames = 160
 
+                local savePX, savePY = self.x, self.y
+                local saveVX, saveVY = self.vx, self.vy
+                local saveDead = self.dead
+                local saveExit = self.reachedExit
+                local saveAngle = self.angle
+                local saveDragging = self.dragging
+                local saveTrail = self.trail
+                local saveTrailTimer = self.trailTimer
+                local save_trailTimer = self._trailTimer
+                local savePCooldown = portalCooldown
+
+                local wallSnap = {}
+                for i, w in ipairs(world.walls) do
+                    wallSnap[i] = {}
+                    for k, v in pairs(w) do wallSnap[i][k] = v end
+                end
+
+                simulating = true
+
+                self.vx = -px * dist * C.PLAYER_LAUNCH_POWER
+                self.vy = -py * dist * C.PLAYER_LAUNCH_POWER
+                self.dead = false
+                self.reachedExit = false
+                self.dragging = false
+                self.trail = {}
+                self.trailTimer = 0
+                self._trailTimer = 999
+
+                local points       = {{x=self.x, y=self.y, broke=false, teleport=false}}
+                local palletPoints = {}
+                local breakableTargets = {}
+                local spikeHit     = nil
+                local hitExit      = false
+                local prevWallCount = #world.walls
+                local prevPX, prevPY = self.x, self.y
+
                 for frame = 1, maxFrames do
-                    simPCooldown = math.max(0, simPCooldown - simFDt)
+                    local speed = math.sqrt(self.vx*self.vx + self.vy*self.vy)
+                    if speed < C.PLAYER_STOP_THRESHOLD then break end
 
-                    local fspeed = math.sqrt(svx*svx + svy*svy)
-                    if fspeed < C.PLAYER_STOP_THRESHOLD then break end
+                    prevPX, prevPY = self.x, self.y
 
-                    local substeps = math.max(1, math.ceil(fspeed * simFDt / (self.radius * 0.5)))
-                    substeps = math.min(substeps, 12)
-                    local subDt = simFDt / substeps
+                    self.update(simFDt, world, nil)
+                    world.update(simFDt, self)
 
-                    local stopSim  = false
-                    local brokeThisFrame = false
-                    local teleportThisFrame = false
+                    if self.dead then
+                        spikeHit = {x = self.x, y = self.y}
+                        break
+                    end
+                    if self.reachedExit then
+                        hitExit = true
+                        break
+                    end
 
-                    for _s = 1, substeps do
-                        spx = spx + svx * subDt
-                        spy = spy + svy * subDt
-
-                        for wi = #world.walls, 1, -1 do
-                            local wall = world.walls[wi]
-                            local should_check = true
-                            local handled = false
-
-                            if wall.type == "door" and wall.open then should_check = false end
-                            if should_check and broken[wall]      then should_check = false end
-                            if should_check and wall.type == "button" then should_check = false end
-
-                            if should_check then
-                                local hit, nx, ny, mtv = physics.circleVsAABB(
-                                    spx, spy, self.radius, wall.x, wall.y, wall.w, wall.h)
-
-                                if hit then
-                                    if wall.type == "exit" then
-                                        hitExit = true
-                                        stopSim = true
-                                        handled = true
-
-                                    elseif wall.type == "spikes" then
-                                        spikeHit = {x = spx, y = spy}
-                                        stopSim  = true
-                                        handled  = true
-
-                                    elseif wall.type == "breakable" then
-                                        local dot = svx * nx + svy * ny
-                                        if math.abs(dot) > C.PLAYER_BREAK_THRESHOLD then
-                                            table.insert(breakableTargets,
-                                                {x = wall.x + wall.w/2, y = wall.y + wall.h/2})
-                                            broken[wall]     = true
-                                            brokeThisFrame   = true
-                                            handled          = true
-                                        end
-
-                                    elseif wall.type == "pallet" then
-                                        local dot = svx * nx + svy * ny
-                                        local impactSpeed = math.abs(dot)
-                                        local transferMult = impactSpeed > 180 and 3.0 or 2.2
-
-                                        if not hitPallet then
-                                            hitPallet = true
-                                            local pvx = -(nx * impactSpeed * transferMult)
-                                            local pvy = -(ny * impactSpeed * transferMult)
-                                            local ppx = wall.x
-                                            local ppy = wall.y
-
-                                            for pf = 1, 180 do
-                                                if math.abs(pvx) < 3 and math.abs(pvy) < 3 then break end
-                                                local pspd = math.sqrt(pvx*pvx + pvy*pvy)
-                                                local pSubs = math.max(1, math.min(8,
-                                                    math.ceil(pspd * simFDt / 10)))
-                                                local pSubDt = simFDt / pSubs
-                                                for _ = 1, pSubs do
-                                                    ppx = ppx + pvx * pSubDt
-                                                    ppy = ppy + pvy * pSubDt
-                                                end
-                                                pvx = pvx * (1 - 1.0 * simFDt)
-                                                pvy = pvy * (1 - 1.0 * simFDt)
-                                                if pf % 2 == 0 then
-                                                    table.insert(palletPoints, ppx + wall.w/2)
-                                                    table.insert(palletPoints, ppy + wall.h/2)
-                                                end
-                                            end
-                                        end
-
-                                        spx = spx + nx * mtv
-                                        spy = spy + ny * mtv
-                                        svx = svx - dot * nx * 0.2
-                                        svy = svy - dot * ny * 0.2
-                                        handled = true
-
-                                    elseif wall.type == "portal_a" or wall.type == "portal_b" then
-                                        if simPCooldown <= 0 then
-                                            local tType = wall.type == "portal_a" and "portal_b" or "portal_a"
-                                            for _, other in ipairs(world.walls) do
-                                                if other.type == tType then
-                                                    table.insert(points, {x = spx, y = spy, broke = false, teleport = true})
-                                                    spx = other.x + other.w/2
-                                                    spy = other.y + other.h/2
-                                                    simPCooldown = 0.8
-                                                    teleportThisFrame = true
-                                                    local hT, tnx, tny, tmtv = physics.circleVsAABB(
-                                                        spx, spy, self.radius,
-                                                        other.x, other.y, other.w, other.h)
-                                                    if hT then
-                                                        spx = spx + tnx * tmtv
-                                                        spy = spy + tny * tmtv
-                                                    end
-                                                    table.insert(points, {x = spx, y = spy, broke = false, teleport = true})
-                                                    handled = true
-                                                    break
-                                                end
-                                            end
-                                        end
-                                        handled = true
-                                    end
-
-                                    if not handled then
-                                        spx = spx + nx * mtv
-                                        spy = spy + ny * mtv
-                                        local dot = svx * nx + svy * ny
-                                        svx = (svx - 2 * dot * nx) * C.PLAYER_BOUNCE_RETENTION
-                                        svy = (svy - 2 * dot * ny) * C.PLAYER_BOUNCE_RETENTION
-                                    end
-                                end
+                    local newWC = #world.walls
+                    local brokeThisFrame = newWC < prevWallCount
+                    if brokeThisFrame then
+                        for i = newWC + 1, prevWallCount do
+                            local snap = wallSnap[i]
+                            if snap and snap.type == "breakable" then
+                                table.insert(breakableTargets,
+                                    {x = snap.x + snap.w/2, y = snap.y + snap.h/2})
                             end
                         end
+                    end
+                    prevWallCount = newWC
 
-                        if stopSim then break end
+                    local movedFar = math.abs(self.x - prevPX) > 2 or math.abs(self.y - prevPY) > 2
+                    if movedFar and (self.x ~= prevPX or self.y ~= prevPY) then
+                        local isTeleport = math.abs(self.x - prevPX) > 80 or math.abs(self.y - prevPY) > 80
+                        if isTeleport then
+                            table.insert(points, {x=prevPX, y=prevPY, broke=false, teleport=true})
+                            table.insert(points, {x=self.x, y=self.y, broke=false, teleport=true})
+                        elseif frame % 2 == 0 then
+                            table.insert(points, {x=self.x, y=self.y, broke=brokeThisFrame, teleport=false})
+                        end
                     end
 
-                    svx = svx * (1 - C.PLAYER_DAMPING * simFDt)
-                    svy = svy * (1 - C.PLAYER_DAMPING * simFDt)
-
-                    if not teleportThisFrame and frame % 3 == 0 then
-                        table.insert(points, {x = spx, y = spy, broke = brokeThisFrame, teleport = false})
+                    for _, w in ipairs(world.walls) do
+                        if w.type == "pallet" then
+                            local pspd = math.sqrt((w.vx or 0)^2 + (w.vy or 0)^2)
+                            if pspd > 5 and frame % 2 == 0 then
+                                table.insert(palletPoints, w.x + w.w/2)
+                                table.insert(palletPoints, w.y + w.h/2)
+                            end
+                        end
                     end
+                end
+                table.insert(points, {x=self.x, y=self.y, broke=false, teleport=false})
 
-                    if hitPallet and frame % 3 == 0 then
-                        table.insert(playerAfterPalletPoints, {x = spx, y = spy})
-                    end
+                self.x, self.y = savePX, savePY
+                self.vx, self.vy = saveVX, saveVY
+                self.dead = saveDead
+                self.reachedExit = saveExit
+                self.angle = saveAngle
+                self.dragging = saveDragging
+                self.trail = saveTrail
+                self.trailTimer = saveTrailTimer
+                self._trailTimer = save_trailTimer
+                portalCooldown = savePCooldown
 
-                    if stopSim then break end
+                simulating = false
+
+                while #world.walls > 0 do table.remove(world.walls) end
+                for i, snap in ipairs(wallSnap) do
+                    world.walls[i] = {}
+                    for k, v in pairs(snap) do world.walls[i][k] = v end
                 end
 
                 local nPts = math.max(1, #points - 1)
@@ -415,26 +370,6 @@ function player.new(x, y)
                     love.graphics.circle("fill", dot.x, dot.y, 2.5)
                 end
 
-                if #playerAfterPalletPoints > 1 then
-                    love.graphics.setLineWidth(1.0)
-                    love.graphics.setColor(0.10, 0.65, 0.35, 0.25)
-                    for j = 1, #playerAfterPalletPoints - 1 do
-                        local p1, p2 = playerAfterPalletPoints[j], playerAfterPalletPoints[j+1]
-                        love.graphics.line(p1.x, p1.y, p2.x, p2.y)
-                    end
-                    for j = 1, #playerAfterPalletPoints do
-                        local p = playerAfterPalletPoints[j]
-                        love.graphics.setColor(0.10, 0.65, 0.35, 0.45)
-                        love.graphics.circle("fill", p.x, p.y, 2)
-                    end
-                    if #playerAfterPalletPoints >= 1 then
-                        local ep = playerAfterPalletPoints[#playerAfterPalletPoints]
-                        love.graphics.setColor(0.10, 0.65, 0.35, 0.50)
-                        love.graphics.setLineWidth(1.5)
-                        love.graphics.circle("line", ep.x, ep.y, 5)
-                    end
-                end
-
                 if #points >= 1 then
                     local ep = points[#points]
                     if hitExit then
@@ -443,7 +378,16 @@ function player.new(x, y)
                         love.graphics.circle("line", ep.x, ep.y, 7)
                         love.graphics.setColor(0.20, 0.80, 0.40, 0.45)
                         love.graphics.circle("fill", ep.x, ep.y, 4)
-                    elseif not spikeHit then
+                    elseif spikeHit then
+                        local pulse = math.sin(love.timer.getTime() * 10) * 0.5 + 0.5
+                        love.graphics.setColor(1, 0.12, 0.12, 0.75 + pulse * 0.25)
+                        love.graphics.setLineWidth(2)
+                        love.graphics.circle("line", spikeHit.x, spikeHit.y, 11 + pulse * 3)
+                        love.graphics.setColor(1, 0.12, 0.12, 1)
+                        local d = 7
+                        love.graphics.line(spikeHit.x-d, spikeHit.y-d, spikeHit.x+d, spikeHit.y+d)
+                        love.graphics.line(spikeHit.x+d, spikeHit.y-d, spikeHit.x-d, spikeHit.y+d)
+                    else
                         love.graphics.setColor(0.10, 0.55, 1.0, 0.55)
                         love.graphics.setLineWidth(1.5)
                         love.graphics.circle("line", ep.x, ep.y, 5.5)
@@ -452,29 +396,14 @@ function player.new(x, y)
                     end
                 end
 
-                if spikeHit then
-                    local pulse = math.sin(love.timer.getTime() * 10) * 0.5 + 0.5
-                    local wx, wy = spikeHit.x, spikeHit.y
-                    love.graphics.setColor(1, 0.12, 0.12, 0.75 + pulse * 0.25)
-                    love.graphics.setLineWidth(2)
-                    love.graphics.circle("line", wx, wy, 11 + pulse * 3)
-                    love.graphics.setColor(1, 0.12, 0.12, 1)
-                    local d = 7
-                    love.graphics.line(wx-d, wy-d, wx+d, wy+d)
-                    love.graphics.line(wx+d, wy-d, wx-d, wy+d)
-                end
-
                 local bc = C.COLOR_BREAKABLE
                 for _, bt in ipairs(breakableTargets) do
                     local pulse = math.sin(love.timer.getTime() * 7) * 0.5 + 0.5
-
                     love.graphics.setColor(bc[1], bc[2], bc[3], 0.28 + pulse * 0.14)
                     love.graphics.circle("fill", bt.x, bt.y, 16)
-
                     love.graphics.setColor(bc[1], bc[2], bc[3], 0.88)
                     love.graphics.setLineWidth(2)
                     love.graphics.circle("line", bt.x, bt.y, 16)
-
                     local d = 10
                     love.graphics.setColor(1, 1, 1, 0.70)
                     love.graphics.setLineWidth(2)
