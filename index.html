@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+  <title>Operation: Shuriken</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:100%;height:100%;background:#000;overflow:hidden}
+    canvas{display:block;width:100%;height:100%;object-fit:contain}
+    #loadingCanvas{display:none}
+    #canvas{visibility:hidden}
+    #loading{
+      position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+      background:#1a1a1a;color:#e8e4dc;font:600 16px/1 system-ui,sans-serif;
+      letter-spacing:.1em;pointer-events:none;transition:opacity .4s
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">LOADING…</div>
+  <canvas id="loadingCanvas"></canvas>
+  <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+  <script>
+    var _audioCtx = null;
+    function resumeAudio() {
+      try {
+        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        _audioCtx.resume();
+      } catch(e) {}
+      try { if (typeof AL !== 'undefined' && AL.currentCtx) AL.currentCtx.resume(); } catch(e) {}
+    }
+    ['touchstart','mousedown','keydown'].forEach(function(ev){
+      document.addEventListener(ev, resumeAudio, {passive:true});
+    });
+
+    window.addEventListener("keydown",function(e){if([32,37,38,39,40].indexOf(e.keyCode)>-1)e.preventDefault();},false);
+    window.onload=function(){window.focus();};
+    window.onclick=function(){window.focus(); resumeAudio();};
+
+    var Module={
+      arguments:["./game.love"],
+      INITIAL_MEMORY:67108864,
+      printErr:console.error.bind(console),
+      canvas:(function(){
+        var c=document.getElementById("canvas");
+        c.addEventListener("webglcontextlost",function(e){e.preventDefault();location.reload();},false);
+        return c;
+      })(),
+      setStatus:function(text){
+        if(!text){
+          document.getElementById("canvas").style.visibility="visible";
+          var ld=document.getElementById("loading");
+          if(ld){ld.style.opacity="0";setTimeout(function(){ld.remove();},500);}
+        } else {
+          var ld=document.getElementById("loading");
+          if(ld) ld.textContent=text.replace(/\(.*?\)/g,"").trim()||"LOADING…";
+        }
+      },
+      totalDependencies:0,
+      remainingDependencies:0,
+      monitorRunDependencies:function(left){
+        this.remainingDependencies=left;
+        this.totalDependencies=Math.max(this.totalDependencies,left);
+        Module.setStatus(left?"Loading…":"");
+      }
+    };
+    Module.setStatus("Loading…");
+    window.onerror=function(){Module.setStatus("Error — check console");};
+  </script>
+  <script src="game.js"></script>
+  <script async src="love.js" onload="Love(Module)"></script>
+</body>
+</html>
