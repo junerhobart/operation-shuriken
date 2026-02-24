@@ -3,7 +3,6 @@ local physics = require("src.utils.physics")
 
 local world = {}
 
--- Draws a filled or outlined ellipse using a polygon approximation.
 local function drawEllipse(mode, cx, cy, rx, ry, segs)
     segs = segs or 32
     local v = {}
@@ -17,7 +16,7 @@ end
 
 function world.new(levelData)
     local self = {}
-    
+
     self.walls = levelData or {
         {x = 280, y = 400, w = 20, h = 400, type = "normal"},
         {x = 180, y = 400, w = 100, h = 20, type = "normal"},
@@ -63,23 +62,23 @@ function world.new(levelData)
     }
 
     self.tutorialFont = love.graphics.newFont("assets/fonts/Jersey25.ttf", 20)
-    
+
     function self.update(dt, player)
         for _, p in ipairs(self.walls) do
             if p.type == "pallet" then
                 p.vx = p.vx or 0
                 p.vy = p.vy or 0
-                
+
                 local speed = math.sqrt(p.vx * p.vx + p.vy * p.vy)
                 if speed > 0 then
                     local substeps = math.max(1, math.ceil(speed * dt / 10))
                     substeps = math.min(substeps, 8)
                     local subDt = dt / substeps
-                    
+
                     for step = 1, substeps do
                         local nextX = p.x + p.vx * subDt
                         local nextY = p.y + p.vy * subDt
-                        
+
                         local hitWall = false
                         for _, other in ipairs(self.walls) do
                             if other ~= p and other.type ~= "button" and other.type ~= "exit" and other.type ~= "portal_a" and other.type ~= "portal_b" then
@@ -87,7 +86,7 @@ function world.new(levelData)
                                     if nextX < other.x + other.w and nextX + p.w > other.x and nextY < other.y + other.h and nextY + p.h > other.y then
                                         local overlapX = math.min(nextX + p.w, other.x + other.w) - math.max(nextX, other.x)
                                         local overlapY = math.min(nextY + p.h, other.y + other.h) - math.max(nextY, other.y)
-                                        
+
                                         if overlapX < overlapY then
                                             p.vx = 0
                                             if nextX < other.x then p.x = other.x - p.w else p.x = other.x + other.w end
@@ -101,14 +100,14 @@ function world.new(levelData)
                                 end
                             end
                         end
-                        
+
                         if not hitWall then
                             p.x = nextX
                             p.y = nextY
                         end
                     end
                 end
-                
+
                 p.vx = p.vx * (1 - 1.0 * dt)
                 p.vy = p.vy * (1 - 1.0 * dt)
                 if math.abs(p.vx) < 3 then p.vx = 0 end
@@ -119,7 +118,7 @@ function world.new(levelData)
         for _, w in ipairs(self.walls) do
             if w.type == "button" then w.active = false end
         end
-        
+
         for _, b in ipairs(self.walls) do
             if b.type == "button" then
                 if physics.circleVsAABB(player.x, player.y, player.radius, b.x, b.y, b.w, b.h) then
@@ -134,7 +133,7 @@ function world.new(levelData)
                 end
             end
         end
-        
+
         for _, d in ipairs(self.walls) do
             if d.type == "door" then
                 local shouldOpen = false
@@ -147,16 +146,14 @@ function world.new(levelData)
             end
         end
     end
-    
+
     function self.release()
         if self.tutorialFont then self.tutorialFont:release() end
     end
-    
+
     function self.draw()
         local T = love.timer.getTime()
 
-        -- 0. BACKGROUND TEXTURE — graph paper lines + dot grid ------------------
-        -- Major grid lines (100 px) — very faint, paper-ruled feel
         love.graphics.setLineWidth(1)
         love.graphics.setColor(0, 0, 0, 0.038)
         local mgs = 100
@@ -168,7 +165,7 @@ function world.new(levelData)
             local sy = math.floor(gy / mgs) * mgs
             love.graphics.line(0, sy, C.WORLD_WIDTH + 200, sy)
         end
-        -- Minor dot grid (40 px) — subtle reference points
+
         love.graphics.setColor(0, 0, 0, 0.10)
         local gs = 40
         for gx = 0, C.WORLD_WIDTH, gs do
@@ -177,15 +174,13 @@ function world.new(levelData)
             end
         end
 
-        -- 1. NORMAL WALLS — flat fill, no outline so adjacent walls are flush --
         love.graphics.setColor(C.COLOR_WALL)
         for _, w in ipairs(self.walls) do
             if w.type == "normal" then
                 love.graphics.rectangle("fill", w.x, w.y, w.w, w.h)
             end
         end
-        -- Floor surface — 3 px bright strip at top edge of horizontal platforms
-        -- Gives rooms a defined floor look without adding clutter
+
         local wc = C.COLOR_WALL
         love.graphics.setColor(wc[1] * 1.22 + 0.10, wc[2] * 1.18 + 0.09, wc[3] * 1.12 + 0.08, 0.70)
         for _, w in ipairs(self.walls) do
@@ -194,7 +189,6 @@ function world.new(levelData)
             end
         end
 
-        -- 2. BREAKABLE — fill + simple X crack mark --------------------------
         for _, w in ipairs(self.walls) do
             if w.type == "breakable" then
                 love.graphics.setColor(C.COLOR_BREAKABLE)
@@ -209,32 +203,26 @@ function world.new(levelData)
             end
         end
 
-        -- 3. BUTTON — pressure-plate: dark frame + inner pad + target indicator
-        --    Drawn BEFORE pallets so the pallet sits visually on top.
         for _, w in ipairs(self.walls) do
             if w.type == "button" then
                 local col   = w.active and C.COLOR_BUTTON_ACTIVE or C.COLOR_BUTTON
                 local pulse = w.active and (math.sin(T * 4) * 0.5 + 0.5) or 0
                 local cx, cy = w.x + w.w / 2, w.y + w.h / 2
-                local ip     = 6   -- inset for the inner plate
+                local ip     = 6
                 local r1     = math.min(w.w, w.h) * 0.20
                 local r2     = r1 * 0.40
 
-                -- Outer dark frame (creates visual depth / recess)
                 love.graphics.setColor(col[1] * 0.30, col[2] * 0.30, col[3] * 0.30, 1)
                 love.graphics.rectangle("fill", w.x, w.y, w.w, w.h)
 
-                -- Inner pressure-plate surface
                 local padAlpha = w.active and (0.78 + pulse * 0.18) or 0.38
                 love.graphics.setColor(col[1], col[2], col[3], padAlpha)
                 love.graphics.rectangle("fill", w.x + ip, w.y + ip, w.w - ip * 2, w.h - ip * 2)
 
-                -- Inner plate outline
                 love.graphics.setColor(col[1] * 0.68, col[2] * 0.68, col[3] * 0.68, w.active and 0.90 or 0.50)
                 love.graphics.setLineWidth(1.5)
                 love.graphics.rectangle("line", w.x + ip, w.y + ip, w.w - ip * 2, w.h - ip * 2)
 
-                -- Target indicator (outer ring + centre dot)
                 if w.active then
                     love.graphics.setColor(1, 1, 1, 0.45 + pulse * 0.30)
                     love.graphics.circle("fill", cx, cy, r2)
@@ -242,7 +230,7 @@ function world.new(levelData)
                     love.graphics.setLineWidth(1.5)
                     love.graphics.circle("line", cx, cy, r1)
                 else
-                    -- Dim target ring — suggests "land here"
+
                     love.graphics.setColor(col[1] * 0.80, col[2] * 0.80, col[3] * 0.80, 0.55)
                     love.graphics.setLineWidth(1.5)
                     love.graphics.circle("line", cx, cy, r1)
@@ -250,25 +238,23 @@ function world.new(levelData)
                     love.graphics.circle("line", cx, cy, r2)
                 end
 
-                -- Corner tick marks — reinforce "landing zone" affordance
                 local cs  = math.min(w.w, w.h) * 0.11
                 local bx, by = w.x + ip + 3, w.y + ip + 3
                 local ex, ey = w.x + w.w - ip - 3, w.y + w.h - ip - 3
                 local ta = w.active and 0.70 or 0.35
                 love.graphics.setColor(col[1] * 0.80, col[2] * 0.80, col[3] * 0.80, ta)
                 love.graphics.setLineWidth(1.5)
-                -- top-left
+
                 love.graphics.line(bx, by + cs, bx, by, bx + cs, by)
-                -- top-right
+
                 love.graphics.line(ex - cs, by, ex, by, ex, by + cs)
-                -- bottom-left
+
                 love.graphics.line(bx, ey - cs, bx, ey, bx + cs, ey)
-                -- bottom-right
+
                 love.graphics.line(ex - cs, ey, ex, ey, ex, ey - cs)
             end
         end
 
-        -- 4. PALLETS — flat fill + 4-directional arrow indicators (no sheen)
         for _, w in ipairs(self.walls) do
             if w.type == "pallet" then
                 love.graphics.setColor(C.COLOR_PALLET)
@@ -277,26 +263,24 @@ function world.new(levelData)
                 local a  = math.min(w.w, w.h) * 0.18
                 local dc = C.COLOR_PALLET
                 love.graphics.setColor(dc[1]*0.48, dc[2]*0.48, dc[3]*0.48, 0.68)
-                -- up
+
                 love.graphics.polygon("fill", cx, cy - a*1.7,  cx - a*0.62, cy - a*0.82,  cx + a*0.62, cy - a*0.82)
-                -- down
+
                 love.graphics.polygon("fill", cx, cy + a*1.7,  cx - a*0.62, cy + a*0.82,  cx + a*0.62, cy + a*0.82)
-                -- left
+
                 love.graphics.polygon("fill", cx - a*1.7, cy,  cx - a*0.82, cy - a*0.62,  cx - a*0.82, cy + a*0.62)
-                -- right
+
                 love.graphics.polygon("fill", cx + a*1.7, cy,  cx + a*0.82, cy - a*0.62,  cx + a*0.82, cy + a*0.62)
             end
         end
 
-        -- 5. SPIKES — supports optional `facing` property -----------------------
-        --   facing = "left"|"right"|"up"|"down"  (nil = auto: bilateral/up)
         for _, w in ipairs(self.walls) do
             if w.type == "spikes" then
                 local col    = C.COLOR_SPIKES
-                local facing = w.facing  -- nil, "left", "right", "up", "down"
+                local facing = w.facing
 
                 if w.w <= w.h then
-                    -- Vertical strip
+
                     local cx    = w.x + w.w / 2
                     local pitch = math.max(10, math.min(18, w.h / math.max(2, math.floor(w.h / 14))))
                     local n     = math.floor(w.h / pitch)
@@ -310,20 +294,20 @@ function world.new(levelData)
                     for i = 0, n - 1 do
                         local ty   = w.y + (i + 0.5) * pitch
                         local half = pitch * 0.43
-                        if facing ~= "right" then  -- draw left teeth unless facing says only right
+                        if facing ~= "right" then
                             love.graphics.polygon("fill", cx, ty - half,  w.x - depth, ty,  cx, ty + half)
                         end
-                        if facing ~= "left" then   -- draw right teeth unless facing says only left
+                        if facing ~= "left" then
                             love.graphics.polygon("fill", cx, ty - half,  w.x + w.w + depth, ty,  cx, ty + half)
                         end
                     end
                 else
-                    -- Horizontal strip
+
                     local pitch = math.max(10, math.min(18, w.w / math.max(2, math.floor(w.w / 14))))
                     local n     = math.floor(w.w / pitch)
 
                     if facing == "down" then
-                        -- teeth point downward
+
                         local baseY = w.y + w.h * 0.40
                         love.graphics.setColor(col[1], col[2], col[3], 0.45)
                         love.graphics.rectangle("fill", w.x, w.y, w.w, w.h - (w.y + w.h - baseY - (w.y + w.h * 0.40 - w.y)))
@@ -334,7 +318,7 @@ function world.new(levelData)
                             love.graphics.polygon("fill", tx - half, baseY,  tx, w.y + w.h,  tx + half, baseY)
                         end
                     else
-                        -- default: teeth point upward
+
                         local baseY = w.y + w.h * 0.60
                         love.graphics.setColor(col[1], col[2], col[3], 0.45)
                         love.graphics.rectangle("fill", w.x, baseY, w.w, w.h - (baseY - w.y))
@@ -353,7 +337,6 @@ function world.new(levelData)
             end
         end
 
-        -- 6. PORTALS — dark void + thick coloured rim + spark -------------------
         for _, w in ipairs(self.walls) do
             if w.type == "portal_a" or w.type == "portal_b" then
                 local col     = w.type == "portal_a" and C.COLOR_PORTAL_A or C.COLOR_PORTAL_B
@@ -361,26 +344,21 @@ function world.new(levelData)
                 local rx, ry  = w.w * 0.50, w.h * 0.50
                 local shimmer = math.sin(T * 3.5) * 0.5 + 0.5
 
-                -- Dark void interior
                 love.graphics.setColor(0.04, 0.04, 0.08, 0.93)
                 drawEllipse("fill", cx, cy, rx - 2, ry - 2)
 
-                -- Animated inner shimmer (subtle)
                 love.graphics.setColor(col[1], col[2], col[3], 0.07 + shimmer * 0.10)
                 drawEllipse("fill", cx, cy, (rx - 6) * 0.85, (ry - 6) * 0.85)
 
-                -- Thick coloured rim
                 love.graphics.setColor(col)
                 love.graphics.setLineWidth(4.5)
                 drawEllipse("line", cx, cy, rx - 1, ry - 1)
 
-                -- Central spark
                 love.graphics.setColor(1, 1, 1, 0.55 + shimmer * 0.38)
                 love.graphics.circle("fill", cx, cy, 1.8 + shimmer * 1.2)
             end
         end
 
-        -- 7. DOOR ---------------------------------------------------------------
         for _, w in ipairs(self.walls) do
             if w.type == "door" then
                 if w.open then
@@ -389,7 +367,7 @@ function world.new(levelData)
                 else
                     love.graphics.setColor(C.COLOR_DOOR)
                     love.graphics.rectangle("fill", w.x, w.y, w.w, w.h, 2, 2)
-                    -- panel striping
+
                     love.graphics.setColor(1, 1, 1, 0.07)
                     if w.h > w.w then
                         local n = math.floor(w.h / 18)
@@ -406,15 +384,14 @@ function world.new(levelData)
             end
         end
 
-        -- 7. EXIT (2 expanding rings) -------------------------------------------
         for _, w in ipairs(self.walls) do
             if w.type == "exit" then
                 local cx, cy = w.x + w.w / 2, w.y + w.h / 2
                 local pulse  = math.sin(T * 3.2) * 0.5 + 0.5
-                -- subtle fill
+
                 love.graphics.setColor(0.18, 0.82, 0.46, 0.13 + pulse * 0.06)
                 love.graphics.rectangle("fill", w.x, w.y, w.w, w.h, 8, 8)
-                -- 2 expanding rings
+
                 for ring = 1, 2 do
                     local phase = (T * 0.75 + ring * 0.5) % 1.0
                     local scale = 0.50 + phase * 0.65
@@ -424,14 +401,13 @@ function world.new(levelData)
                     love.graphics.setLineWidth(1.5)
                     love.graphics.rectangle("line", cx - rw/2, cy - rh/2, rw, rh, 8, 8)
                 end
-                -- clean border
+
                 love.graphics.setColor(0.18, 0.82, 0.46, 0.70 + pulse * 0.30)
                 love.graphics.setLineWidth(2)
                 love.graphics.rectangle("line", w.x, w.y, w.w, w.h, 8, 8)
             end
         end
 
-        -- 8. OUTLINE PASS — only interactive tile types get borders -------------
         love.graphics.setLineWidth(1)
         for _, w in ipairs(self.walls) do
             if w.type == "breakable" then
@@ -443,7 +419,6 @@ function world.new(levelData)
             end
         end
 
-        -- 9. TUTORIAL TEXT -----------------------------------------------------
         love.graphics.setFont(self.tutorialFont)
         for _, t in ipairs(self.tutorialTexts) do
             local lumBG = C.COLOR_BG[1] * 0.299 + C.COLOR_BG[2] * 0.587 + C.COLOR_BG[3] * 0.114
@@ -452,7 +427,7 @@ function world.new(levelData)
             love.graphics.printf(t.text, t.x - 100, t.y, 200, "center")
         end
     end
-    
+
     return self
 end
 

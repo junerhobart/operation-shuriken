@@ -42,8 +42,35 @@ _switchLock           = false
 
 currentLevel          = 1
 completedLevels       = {}
+
+lsDrag = {
+    active   = false,
+    startY   = 0,
+    startScroll = 0,
+    velY     = 0,
+    lastY    = 0,
+    lastT    = 0,
+}
+
+function saveProgress()
+    local lines = {}
+    for k, v in pairs(completedLevels) do
+        if v then table.insert(lines, tostring(k)) end
+    end
+    love.filesystem.write("save.txt", table.concat(lines, "\n"))
+end
+
+function loadProgress()
+    if love.filesystem.getInfo("save.txt") then
+        local data = love.filesystem.read("save.txt")
+        for line in data:gmatch("[^\n]+") do
+            local n = tonumber(line)
+            if n then completedLevels[n] = true end
+        end
+    end
+end
 levelSelectTime       = 0
-levelSelectScroll     = 0   -- pixel scroll offset inside the panel (0 = top visible)
+levelSelectScroll     = 0
 storyTime             = 0
 storyType             = "pre"
 levelTransition       = 0
@@ -68,12 +95,12 @@ editor = {
     isResizing = false,
     resizeHandle = nil,
     resizeAnchorX = 0, resizeAnchorY = 0,
-    -- Text nodes
+
     selectedText  = nil,
     editingText   = false,
     isDraggingText = false,
     textDragOffX  = 0, textDragOffY = 0,
-    -- Deferred undo (only commit if wall actually moved)
+
     _pendingSnap  = nil,
     saveNotifTime = -99,
 }
@@ -124,7 +151,7 @@ end
 
 function unlockAudio()
     if not audioUnlocked then
-        -- Play a tiny silent sound to resume the audio context
+
         local soundData = love.sound.newSoundData(512, 44100, 16, 1)
         local silentSource = love.audio.newSource(soundData)
         silentSource:play()
@@ -138,18 +165,16 @@ local function updateColors()
         C.COLOR_WALL         = {0.16, 0.16, 0.19}
         C.COLOR_WALL_OUTLINE = {0.24, 0.24, 0.30}
     else
-        -- Warm paper light mode — higher contrast so walls read clearly
+
         C.COLOR_BG           = {0.93, 0.92, 0.89}
         C.COLOR_WALL         = {0.46, 0.45, 0.43}
-        C.COLOR_WALL_OUTLINE = {0.46, 0.45, 0.43}  -- same as fill: no seam between touching walls
+        C.COLOR_WALL_OUTLINE = {0.46, 0.45, 0.43}
     end
 end
 
-
--- ── MODULE LOADS ────────────────────────────────────────────────────────
-require('src.ui.draw')      -- scaling, buttons, menus, level-select, story, options
-require('src.ui.editor')    -- level editor UI + undo stack
-require('src.ui.handlers')  -- all love.mouse/key/wheel/text callbacks
+require('src.ui.draw')
+require('src.ui.editor')
+require('src.ui.handlers')
 
 function love.load(arg)
     for _, v in ipairs(arg) do
@@ -158,23 +183,23 @@ function love.load(arg)
 
     love.graphics.setDefaultFilter("linear", "linear", 16)
     updateColors()
-    
+
     fonts.main = love.graphics.newFont("assets/fonts/Jersey25.ttf", 24)
     fonts.large = love.graphics.newFont("assets/fonts/Jersey25.ttf", 64)
     fonts.title = love.graphics.newFont("assets/fonts/Jersey25.ttf", 92)
     fonts.options = love.graphics.newFont("assets/fonts/Jersey25.ttf", 48)
     fonts.play = love.graphics.newFont("assets/fonts/Jersey25.ttf", 80)
-    
+
     sounds.click = love.audio.newSource("assets/audio/sound-effects/click.wav", "static")
     sounds.hover = love.audio.newSource("assets/audio/sound-effects/hover.wav", "static")
     sounds.drop = love.audio.newSource("assets/audio/sound-effects/drop.wav", "static")
     sounds.bounce = love.audio.newSource("assets/audio/sound-effects/bounce.wav", "static")
     sounds.death = love.audio.newSource("assets/audio/sound-effects/squish.wav", "static")
-    
+
     music.menu = love.audio.newSource("assets/audio/music/menu-loop.wav", "stream")
     music.game = love.audio.newSource("assets/audio/music/stealth-loop.wav", "stream")
     music.action = love.audio.newSource("assets/audio/music/action-loop.wav", "stream")
-    
+
     local w, h = love.graphics.getDimensions()
     buttons.play = {
         x = w/2 - 150, y = h/2 - 80, w = 300, h = 110,
@@ -188,11 +213,12 @@ function love.load(arg)
         offsetY = -500, delay = 0, rotation = 0, targetRotation = 0,
         squashX = 1, squashY = 1, hovered = false, landed = false
     }
-    
+
+    loadProgress()
     resetGame()
     state = "menu"
     playMusic("menu")
-    -- Apply correct button sizes for the current screen (important for mobile)
+
     love.resize(love.graphics.getDimensions())
 end
 
@@ -257,7 +283,7 @@ function getMouseWorld()
 end
 
 function love.update(dt)
-    -- Update music volume based on settings
+
     for k, v in pairs(music) do v:setVolume(settings.musicVol) end
     for k, v in pairs(sounds) do v:setVolume(settings.sfxVol) end
 
@@ -268,29 +294,34 @@ function love.update(dt)
         updateButton(buttons.options, dt, mx, my)
         return
     end
-    
+
     if state == "levelSelect" then
         levelSelectTime = levelSelectTime + dt
+
+        if not lsDrag.active and math.abs(lsDrag.velY) > 0.5 then
+            levelSelectScroll = levelSelectScroll + lsDrag.velY * dt
+            lsDrag.velY = lsDrag.velY * (1 - math.min(dt * 12, 1))
+            if math.abs(lsDrag.velY) < 1 then lsDrag.velY = 0 end
+        end
         return
     end
-    
+
     if state == "story" then
         storyTime = storyTime + dt
         return
     end
-    
+
     if state == "options" then
         optionsTime = optionsTime + dt
         return
     end
-    
+
     if state == "editor" then
         local mx, my = getMouseWorld()
         mx = math.floor(mx / editor.gridSize + 0.5) * editor.gridSize
         my = math.floor(my / editor.gridSize + 0.5) * editor.gridSize
         editor.curX, editor.curY = mx, my
-        
-        -- Camera pan in editor
+
         local speed = 500 * dt
         if love.keyboard.isDown("up") then camY = camY - speed end
         if love.keyboard.isDown("down") then camY = camY + speed end
@@ -299,11 +330,10 @@ function love.update(dt)
         return
     end
 
-    -- Pause game if window is not focused (especially for web)
     if not love.window.hasFocus() then return end
-    
+
     if victory then
-        -- Update hover state for victory buttons
+
         local mx, my = love.mouse.getPosition()
         for _, vb in pairs(victoryButtons) do
             vb.hovered = (mx >= vb.x and mx <= vb.x + vb.w and
@@ -319,7 +349,6 @@ function love.update(dt)
     player.updateDrag(getMouseWorld())
     world.update(dt, player)
 
-    -- Button activation particles
     for _, w in ipairs(world.walls) do
         if w.type == "button" then
             local id = tostring(w.x) .. "_" .. tostring(w.y)
@@ -340,6 +369,7 @@ function love.update(dt)
         victory = true
         victoryTime = 0
         completedLevels[currentLevel] = true
+        saveProgress()
         particleSystem.spawnVictory(player.x, player.y)
         love.resize(love.graphics.getDimensions())
     end
@@ -351,7 +381,7 @@ end
 
 function love.focus(f)
     if not f and state == "game" then
-        -- Optional: auto-pause or mute
+
     end
 end
 
@@ -365,64 +395,68 @@ function love.resize(w, h)
     local scale = getUIScale()
     local portrait = h > w
 
-    -- Recreate fonts at the correct scaled size so text always matches layout.
     local function newFont(size)
         return love.graphics.newFont("assets/fonts/Jersey25.ttf",
             math.max(10, math.floor(size * scale)))
     end
-    fonts.main    = newFont(24)
-    fonts.large   = newFont(64)
-    fonts.title   = newFont(92)
-    fonts.options = newFont(48)
-    fonts.play    = newFont(80)
+    fonts.main  = newFont(24)
+    fonts.large = newFont(64)
+    fonts.title = newFont(92)
 
-    -- Design-size dimensions (what buttons look like at scale = 1)
-    local playBaseW, playBaseH = 340, 110
-    local optBaseW,  optBaseH  = 280, 90
+    local playH = math.min(math.max(68 * scale, 56), 90)
+    local optH  = math.min(math.max(52 * scale, 44), 70)
+    local playW = math.min(playH * 5.2, w * 0.82)
+    local optW  = math.min(optH  * 5.2, w * 0.82)
 
-    -- Scale up, widen on portrait for finger targets, but hard-cap so they
-    -- never grow oversized on large monitors.
-    local playW = math.min(math.max(playBaseW * scale, portrait and w * 0.62 or 0), 420)
-    local playH = math.min(math.max(playBaseH * scale, 50), 130)
-    local optW  = math.min(math.max(optBaseW  * scale, portrait and w * 0.52 or 0), 340)
-    local optH  = math.min(math.max(optBaseH  * scale, 44), 108)
+    local function btnFont(btnH)
+        return love.graphics.newFont("assets/fonts/Jersey25.ttf",
+            math.max(12, math.floor(btnH * 0.68)))
+    end
+    fonts.play    = btnFont(playH)
+    fonts.options = btnFont(optH)
 
-    local vGap = math.max(70 * scale, h * 0.09)
+    local playBaseH = playH
+    local optBaseH  = optH
+
+    local btnGap   = math.max(16 * scale, 14)
+    local groupH   = playH + btnGap + optH
+    local groupTop = h / 2 - groupH / 2
 
     buttons.play.w     = playW
     buttons.play.h     = playH
-    buttons.play.baseH = playBaseH   -- design height for text-scale calc
+    buttons.play.baseH = playBaseH
     buttons.play.x     = w/2 - playW/2
-    buttons.play.baseY = h/2 - vGap
+    buttons.play.baseY = groupTop
 
     buttons.options.w     = optW
     buttons.options.h     = optH
     buttons.options.baseH = optBaseH
     buttons.options.x     = w/2 - optW/2
-    buttons.options.baseY = h/2 + vGap
+    buttons.options.baseY = groupTop + playH + btnGap
 
-    -- Victory screen buttons (positioned relative to vertical centre)
-    local cy = h / 2
-    local contW = math.min(math.max(260 * scale, portrait and w * 0.55 or 0), 340)
-    local contH = math.max(58 * scale, 48)
-    local smW   = math.min(math.max(120 * scale, portrait and w * 0.24 or 0), 156)
-    local smH   = math.max(48 * scale, 42)
-    local gap   = 10 * scale
+    local cy   = h / 2
+    local btnH = math.max(38 * scale, 32)
 
-    victoryButtons.continue.w = contW
-    victoryButtons.continue.h = contH
-    victoryButtons.continue.x = w/2 - contW/2
-    victoryButtons.continue.y = cy + 22 * scale
+    local fh   = fonts.main:getHeight()
+    local labels = {"CONTINUE", "LEVEL SELECT", "RESTART"}
+    local keys   = {"continue", "map", "restart"}
+    local gap    = math.max(28 * scale, 20)
 
-    victoryButtons.map.w = smW
-    victoryButtons.map.h = smH
-    victoryButtons.map.x = w/2 - smW - gap
-    victoryButtons.map.y = cy + 22 * scale + contH + gap
+    local totalW = 0
+    for _, lbl in ipairs(labels) do totalW = totalW + fonts.main:getWidth(lbl) end
+    totalW = totalW + gap * (#labels - 1)
+    local startX = w/2 - totalW/2
+    local btnY   = cy + 78 * scale
 
-    victoryButtons.restart.w = smW
-    victoryButtons.restart.h = smH
-    victoryButtons.restart.x = w/2 + gap
-    victoryButtons.restart.y = cy + 22 * scale + contH + gap
+    local cx2 = startX
+    for i, lbl in ipairs(labels) do
+        local tw = fonts.main:getWidth(lbl)
+        victoryButtons[keys[i]].x = cx2
+        victoryButtons[keys[i]].y = btnY
+        victoryButtons[keys[i]].w = tw
+        victoryButtons[keys[i]].h = fh + 4
+        cx2 = cx2 + tw + gap
+    end
 end
 
 function love.touchpressed(id, x, y, dx, dy, pressure)
@@ -431,7 +465,7 @@ function love.touchpressed(id, x, y, dx, dy, pressure)
 end
 
 function love.touchmoved(id, x, y, dx, dy, pressure)
-    -- Handled by love.mousemoved for single touch
+
 end
 
 function love.touchreleased(id, x, y, dx, dy, pressure)
@@ -443,7 +477,7 @@ function love.filedropped(file)
     if filename:match("%.lua$") then
         local content, size = file:read()
         if content then
-            -- Attempt to load level from lua file
+
             local chunk, err = loadstring(content)
             if chunk then
                 local levelData = chunk()
@@ -458,7 +492,7 @@ function love.filedropped(file)
 end
 
 function love.directorydropped(path)
-    -- Handle directory drops if needed
+
 end
 
 function drawGame()
@@ -480,45 +514,42 @@ end
 
 function love.draw()
     love.graphics.setBackgroundColor(C.COLOR_BG)
-    
+
     if state == "levelSelect" then
         drawLevelSelect()
         drawLetterbox()
         return
     end
-    
+
     if state == "story" then
         drawStory()
         drawLetterbox()
         return
     end
-    
+
     if state == "menu" then
         drawGame()
         local w, h = love.graphics.getDimensions()
         local scale = getUIScale()
         local t = menuTime
 
-        -- Paper overlay
         love.graphics.setColor(0.97, 0.96, 0.93, 0.84)
         love.graphics.rectangle("fill", 0, 0, w, h)
 
-        -- Title
+        local titleY = h * 0.14
         love.graphics.setFont(fonts.title)
         love.graphics.setColor(0.08, 0.08, 0.08, 1)
-        love.graphics.printf("Operation: Shuriken", 0, 100 * scale, w, "center")
+        love.graphics.printf("Operation: Shuriken", 0, titleY, w, "center")
 
-        -- Subtitle (thin rule + label)
-        local titleW = 440 * scale
-        local ruleY = 215 * scale
+        local afterTitle = titleY + fonts.title:getHeight() * 0.82
+        local titleW = math.min(440 * scale, w * 0.70)
         love.graphics.setColor(0.55, 0.55, 0.55, 1)
         love.graphics.setLineWidth(1.5)
-        love.graphics.line(w/2 - titleW/2, ruleY, w/2 + titleW/2, ruleY)
+        love.graphics.line(w/2 - titleW/2, afterTitle, w/2 + titleW/2, afterTitle)
         love.graphics.setFont(fonts.main)
         love.graphics.setColor(0.55, 0.55, 0.55, 1)
-        love.graphics.printf("D E M O", 0, 222 * scale, w, "center")
+        love.graphics.printf("D E M O", 0, afterTitle + 6, w, "center")
 
-        -- Buttons driven by updateButton (proper drop-in + sound sync)
         drawButton(buttons.play,    "Play",    fonts.play)
         drawButton(buttons.options, "Options", fonts.options)
 
@@ -537,7 +568,7 @@ function love.draw()
             local scale = getUIScale()
             love.graphics.setColor(0.97, 0.96, 0.93, 0.84)
             love.graphics.rectangle("fill", 0, 0, w, h)
-            -- Push buttons downward as the settings panel drops in (scaled distance)
+
             local pushDist = UI_BASE_H * scale
             local pushP = easeInQuad(math.min(optionsTime / 0.26, 1))
             love.graphics.push()
@@ -557,7 +588,7 @@ function love.draw()
     end
     drawGame()
     local w, h = love.graphics.getDimensions()
-    -- Zoom indicator
+
     if math.abs(camZoom - 1.0) > 0.05 then
         love.graphics.setFont(fonts.main)
         love.graphics.setColor(0.10, 0.10, 0.10, 0.30)
@@ -566,57 +597,71 @@ function love.draw()
     if victory then
         local scale = getUIScale()
         local vt = victoryTime or 0
-        
-        -- Fade in overlay
-        local overlayAlpha = math.min(vt * 3, 0.90)
-        love.graphics.setColor(0.97, 0.96, 0.93, overlayAlpha)
+
+        local overlayAlpha = math.min(vt * 2.5, 0.55)
+        love.graphics.setColor(0, 0, 0, overlayAlpha)
         love.graphics.rectangle("fill", 0, 0, w, h)
-        
+
         local lvl = levelsModule.get(currentLevel)
-        local lw = 360 * scale
-        local cy = h / 2
-        
-        -- Animated rules
-        local ruleProgress = math.min(vt * 2, 1)
-        local drawLW = lw * ruleProgress
-        love.graphics.setColor(0.12, 0.12, 0.12, 1)
-        love.graphics.setLineWidth(2)
-        love.graphics.line(w/2 - drawLW/2, cy - 90 * scale, w/2 + drawLW/2, cy - 90 * scale)
-        love.graphics.line(w/2 - drawLW/2, cy + 70 * scale, w/2 + drawLW/2, cy + 70 * scale)
-        
-        -- Level name with typewriter
+        local cy  = h / 2
+        local textA = math.min(vt * 3, 1)
+
         local levelText = "LEVEL " .. currentLevel .. "  " .. (lvl and lvl.name or "")
-        local levelChars = math.min(math.floor((vt - 0.3) * 30), #levelText)
+        local levelChars = math.min(math.floor((vt - 0.2) * 35), #levelText)
         if levelChars > 0 then
             love.graphics.setFont(fonts.main)
-            love.graphics.setColor(0.55, 0.55, 0.55, 1)
-            love.graphics.printf(levelText:sub(1, levelChars), 0, cy - 80 * scale, w, "center")
+            love.graphics.setColor(0.80, 0.80, 0.80, textA)
+            love.graphics.printf(levelText:sub(1, levelChars), 0, cy - 70 * scale, w, "center")
         end
-        
-        -- Main title with scale bounce
-        local titleProgress = math.min((vt - 0.4) * 3, 1)
-        if titleProgress > 0 then
-            local bounce = 1 + (1 - titleProgress) * math.sin(titleProgress * math.pi) * 0.15
+
+        local titleP = math.min((vt - 0.3) * 3.5, 1)
+        if titleP > 0 then
+            local bounce = 1 + (1 - titleP) * math.sin(titleP * math.pi) * 0.12
             love.graphics.setFont(fonts.large)
-            love.graphics.setColor(0.08, 0.08, 0.08, titleProgress)
+            love.graphics.setColor(0.97, 0.96, 0.93, titleP)
             love.graphics.push()
-            love.graphics.translate(w/2, cy - 35 * scale)
+            love.graphics.translate(w/2, cy - 18 * scale)
             love.graphics.scale(bounce, bounce)
             love.graphics.printf("COMPLETE", -w/2, 0, w, "center")
             love.graphics.pop()
         end
-        
-        -- Tappable buttons fade in after 0.8 s
-        local btnAlpha = math.min((vt - 0.8) * 2.5, 1)
-        if btnAlpha > 0 then
-            local vb      = victoryButtons
-            local isLast  = currentLevel >= levelsModule.totalLevels
-            drawVictoryButton(vb.continue.x, vb.continue.y, vb.continue.w, vb.continue.h,
-                isLast and "CREDITS" or "CONTINUE", btnAlpha, vb.continue.hovered)
-            drawVictoryButton(vb.map.x,     vb.map.y,     vb.map.w,     vb.map.h,
-                "MAP",     btnAlpha, vb.map.hovered)
-            drawVictoryButton(vb.restart.x, vb.restart.y, vb.restart.w, vb.restart.h,
-                "RESTART", btnAlpha, vb.restart.hovered)
+
+        local ruleP = math.min((vt - 0.5) * 4, 1)
+        if ruleP > 0 then
+            local ruleW = 300 * scale * ruleP
+            love.graphics.setColor(0.97, 0.96, 0.93, 0.35 * ruleP)
+            love.graphics.setLineWidth(1)
+            love.graphics.line(w/2 - ruleW/2, cy + 56 * scale, w/2 + ruleW/2, cy + 56 * scale)
+        end
+
+        local btnA = math.min((vt - 0.7) * 3, 1)
+        if btnA > 0 then
+            local isLast = currentLevel >= levelsModule.totalLevels
+            local vb = victoryButtons
+            local labels = {
+                isLast and "CREDITS" or "CONTINUE",
+                "LEVEL SELECT",
+                "RESTART",
+            }
+            local keys = {"continue", "map", "restart"}
+
+            love.graphics.setFont(fonts.main)
+            for i, lbl in ipairs(labels) do
+                local btn = vb[keys[i]]
+                local hov = btn.hovered
+
+                local tw = fonts.main:getWidth(lbl)
+                local tx = btn.x + btn.w/2 - tw/2
+                local ty = btn.y + (btn.h - fonts.main:getHeight()) / 2
+                love.graphics.setColor(0.97, 0.96, 0.93, btnA * (hov and 1 or 0.72))
+                love.graphics.print(lbl, tx, ty)
+                if hov then
+                    love.graphics.setColor(0.97, 0.96, 0.93, btnA * 0.55)
+                    love.graphics.setLineWidth(1)
+                    love.graphics.line(tx, ty + fonts.main:getHeight() + 1,
+                                       tx + tw, ty + fonts.main:getHeight() + 1)
+                end
+            end
         end
     end
     drawLetterbox()

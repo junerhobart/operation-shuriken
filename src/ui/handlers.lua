@@ -1,53 +1,33 @@
 function love.mousepressed(x, y, button)
     unlockAudio()
     if button ~= 1 and button ~= 2 then return end
-    
+
     if state == "menu" then
         if button == 1 then
-            if pointInRect(x, y, buttons.play) then 
+            if pointInRect(x, y, buttons.play) then
                 sounds.click:stop(); sounds.click:play()
-                state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0
-            elseif pointInRect(x, y, buttons.options) then 
+                state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0
+            elseif pointInRect(x, y, buttons.options) then
                 sounds.click:stop(); sounds.click:play()
                 prevState = "menu"; state = "options"; optionsTime = 0
             end
         end
         return
     end
-    
+
     if state == "levelSelect" then
         if button == 1 then
-            local sw, sh = love.graphics.getDimensions()
-            local panelX, panelY, panelW, panelH, nodeRadius, _, rowH =
-                levelSelectPanelGeom(sw, sh)
-            local positions = levelSelectNodePositions(
-                panelX, panelY, panelH, nodeRadius, 1, rowH, 0, 0,
-                levelSelectScroll or 0)
 
-            for i = 1, levelsModule.totalLevels do
-                local pos = positions[i]
-                if pos then
-                    local dist = math.sqrt((x - pos.x)^2 + (y - pos.y)^2)
-                    if dist < nodeRadius + 12 then
-                        if isLevelUnlocked(i) then
-                            sounds.click:stop(); sounds.click:play()
-                            currentLevel = i
-                            loadLevel(currentLevel)
-                            storyType = "pre"
-                            storyTime = 0
-                            state = "story"
-                        else
-                            sounds.hover:stop(); sounds.hover:play()
-                        end
-                        return
-                    end
-                end
-            end
+            lsDrag.active      = true
+            lsDrag.startY      = y
+            lsDrag.startScroll = levelSelectScroll or 0
+            lsDrag.velY        = 0
+            lsDrag.lastY       = y
+            lsDrag.lastT       = love.timer.getTime()
         end
         return
     end
-    
-    -- Story screen: tap anywhere to advance / skip typewriter
+
     if state == "story" and button == 1 then
         local lvl = levelsModule.get(currentLevel)
         if lvl then
@@ -55,7 +35,7 @@ function love.mousepressed(x, y, button)
             local textLen = utf8len(text)
             local charCount = math.floor(storyTime * 40)
             if charCount < textLen then
-                storyTime = textLen / 40 + 0.1  -- skip to end of typewriter
+                storyTime = textLen / 40 + 0.1
             else
                 sounds.click:stop(); sounds.click:play()
                 if storyType == "pre" then
@@ -76,13 +56,13 @@ function love.mousepressed(x, y, button)
 
     if state == "options" then
         if button == 1 then
-            local sw2 = love.graphics.getWidth()
+            local sw2, sh2 = love.graphics.getDimensions()
             local scale = getUIScale()
             local cx = sw2 / 2
             local tabs = {"General", "Audio", "Display"}
-            local tabSpacing = 140 * scale
+            local tabSpacing = math.min(140 * scale, sw2 * 0.28)
             local tabStartX = cx - tabSpacing
-            local tabY = 165 * scale
+            local tabY = math.min(165 * scale, sh2 * 0.22)
 
             for i, tab in ipairs(tabs) do
                 local tx = tabStartX + (i - 1) * tabSpacing
@@ -97,7 +77,7 @@ function love.mousepressed(x, y, button)
         end
         return
     end
-    
+
     if state == "editor" then
         local sx, sy = love.mouse.getPosition()
         local sw2    = love.graphics.getWidth()
@@ -105,10 +85,8 @@ function love.mousepressed(x, y, button)
         local LW = editor.LEFT_W
         local RW = editor.RIGHT_W
 
-        -- Topbar: absorb
         if sy < TH then return end
 
-        -- Left panel: tile type + text node list
         if sx < LW then
             if button == 1 then
                 local itemH  = 32
@@ -121,7 +99,7 @@ function love.mousepressed(x, y, button)
                         return
                     end
                 end
-                -- Text node list
+
                 if world.tutorialTexts then
                     local txSectY = listY + #editor.types * itemH + 6
                     local txListY = txSectY + 27
@@ -141,10 +119,8 @@ function love.mousepressed(x, y, button)
             return
         end
 
-        -- Right panel: absorb clicks
         if sx > sw2 - RW then return end
 
-        -- Space held: panning (handled in mousemoved)
         if editor.spaceHeld then return end
 
         local mx2, my2 = getMouseWorld()
@@ -152,7 +128,6 @@ function love.mousepressed(x, y, button)
         if button == 1 then
             editor.editingText = false
 
-            -- 1. Resize handles of selected wall
             if editor.selectedWall and world.walls[editor.selectedWall] then
                 local sel       = world.walls[editor.selectedWall]
                 local hitRadius = 10 / camZoom
@@ -181,7 +156,6 @@ function love.mousepressed(x, y, button)
                 end
             end
 
-            -- 2. Text node handles
             if world.tutorialTexts then
                 local txHit = 13 / camZoom
                 for i, t in ipairs(world.tutorialTexts) do
@@ -197,7 +171,6 @@ function love.mousepressed(x, y, button)
                 end
             end
 
-            -- 3. Hit-test all walls
             local hit = nil
             for i = #world.walls, 1, -1 do
                 local wall = world.walls[i]
@@ -210,19 +183,19 @@ function love.mousepressed(x, y, button)
             if hit then
                 editor.selectedText = nil
                 if editor.selectedWall == hit then
-                    -- Already selected → start drag (deferred undo)
+
                     editor._pendingSnap  = takeSnapshot()
                     editor.isDragging    = true
                     local sel = world.walls[hit]
                     editor.dragOffsetX   = mx2 - sel.x
                     editor.dragOffsetY   = my2 - sel.y
                 else
-                    -- New selection
+
                     editor.selectedWall = hit
                     sounds.hover:play()
                 end
             else
-                -- Empty space → draw new wall
+
                 local gs = editor.gridSize
                 local gx = math.floor(mx2 / gs + 0.5) * gs
                 local gy = math.floor(my2 / gs + 0.5) * gs
@@ -234,7 +207,7 @@ function love.mousepressed(x, y, button)
             end
 
         elseif button == 2 then
-            -- Right-click: delete wall under cursor
+
             for i = #world.walls, 1, -1 do
                 local wall = world.walls[i]
                 if mx2 >= wall.x and mx2 <= wall.x + wall.w and
@@ -253,11 +226,10 @@ function love.mousepressed(x, y, button)
         end
         return
     end
-    
-    -- Victory screen buttons
+
     if victory and button == 1 then
         local vb = victoryButtons
-        -- helper: is point inside a victoryButton rect?
+
         local function inVB(b) return x >= b.x and x <= b.x + b.w and y >= b.y and y <= b.y + b.h end
 
         if inVB(vb.continue) then
@@ -275,7 +247,7 @@ function love.mousepressed(x, y, button)
         end
         if inVB(vb.map) then
             sounds.click:stop(); sounds.click:play()
-            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0
+            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0
             return
         end
         if inVB(vb.restart) then
@@ -283,21 +255,34 @@ function love.mousepressed(x, y, button)
             loadLevel(currentLevel)
             return
         end
-        return  -- swallow other taps on victory screen
+        return
     end
 
     if not victory and button == 1 then local wx, wy = getMouseWorld(); player.startDrag(wx, wy) end
 end
 
 function love.mousemoved(x, y, dx, dy)
+
+    if state == "levelSelect" and lsDrag.active then
+        local delta = y - lsDrag.lastY
+
+        levelSelectScroll = lsDrag.startScroll - (y - lsDrag.startY)
+
+        local now = love.timer.getTime()
+        local dt2 = math.max(now - lsDrag.lastT, 0.001)
+        lsDrag.velY = -delta / dt2
+        lsDrag.lastY = y
+        lsDrag.lastT = now
+        return
+    end
     if state == "editor" then
-        -- Space-pan or middle-mouse pan
+
         if (editor.spaceHeld and love.mouse.isDown(1)) or love.mouse.isDown(3) then
             camX = camX - dx / camZoom
             camY = camY - dy / camZoom
             return
         end
-        -- Move selected wall (deferred undo: only commit when position first changes)
+
         if editor.isDragging and editor.selectedWall and world.walls[editor.selectedWall] then
             local mx2, my2 = getMouseWorld()
             local gs  = editor.gridSize
@@ -310,7 +295,7 @@ function love.mousemoved(x, y, dx, dy)
             sel.x = nx
             sel.y = ny
         end
-        -- Resize selected wall
+
         if editor.isResizing and editor.selectedWall and world.walls[editor.selectedWall] then
             local mx2, my2 = getMouseWorld()
             local gs = editor.gridSize
@@ -323,7 +308,7 @@ function love.mousemoved(x, y, dx, dy)
             sel.w = math.max(math.abs(sx - ax), gs)
             sel.h = math.max(math.abs(sy - ay), gs)
         end
-        -- Move selected text node
+
         if editor.isDraggingText and editor.selectedText and world.tutorialTexts and world.tutorialTexts[editor.selectedText] then
             local mx2, my2 = getMouseWorld()
             local gs = editor.gridSize
@@ -336,8 +321,10 @@ end
 
 function love.wheelmoved(x, y)
     if state == "levelSelect" then
-        -- will be clamped by drawLevelSelect based on content height
-        levelSelectScroll = levelSelectScroll - y * 40
+
+        local speed = 60
+        levelSelectScroll = levelSelectScroll + y * speed
+        lsDrag.velY = y * speed * 8
         return
     end
     if state == "editor" then
@@ -356,11 +343,46 @@ end
 
 function love.mousereleased(x, y, button)
     _switchLock = false
+
+    if state == "levelSelect" and button == 1 then
+        local wasDrag = math.abs(y - lsDrag.startY) > 8
+        lsDrag.active = false
+
+        if not wasDrag then
+
+            local sw, sh = love.graphics.getDimensions()
+            local panelX, panelY, panelW, panelH, nodeRadius, _, rowH =
+                levelSelectPanelGeom(sw, sh)
+            local positions = levelSelectNodePositions(
+                panelX, panelY, panelH, nodeRadius, 1, rowH, 0, 0,
+                levelSelectScroll or 0)
+            for i = 1, levelsModule.totalLevels do
+                local pos = positions[i]
+                if pos then
+                    local dist = math.sqrt((x - pos.x)^2 + (y - pos.y)^2)
+                    if dist < nodeRadius + 12 then
+                        if isLevelUnlocked(i) then
+                            sounds.click:stop(); sounds.click:play()
+                            currentLevel = i
+                            loadLevel(currentLevel)
+                            storyType = "pre"; storyTime = 0
+                            state = "story"
+                        else
+                            sounds.hover:stop(); sounds.hover:play()
+                        end
+                        return
+                    end
+                end
+            end
+        end
+        return
+    end
+
     if state == "editor" and button == 1 then
         editor.isDragging     = false
         editor.isResizing     = false
         editor.isDraggingText = false
-        editor._pendingSnap   = nil   -- discard if no movement occurred
+        editor._pendingSnap   = nil
         if editor.isDrawing then
             local wx, wy = getMouseWorld()
             wx = math.floor(wx / editor.gridSize + 0.5) * editor.gridSize
@@ -383,21 +405,20 @@ function love.mousereleased(x, y, button)
         end
         return
     end
-    
+
     if state == "menu" or state == "options" then return end
     if not victory and button == 1 then local r = player.releaseDrag(); if r > 0 then shake = math.max(shake, r * 6) end end
 end
 
 function love.keypressed(key)
-    -- Level select state
+
     if state == "levelSelect" then
         if key == "escape" then
             state = "menu"; resetMenu(); playMusic("menu")
         end
         return
     end
-    
-    -- Story state
+
     if state == "story" then
         local lvl = levelsModule.get(currentLevel)
         local text = storyType == "pre" and lvl.storyPre or lvl.storyPost
@@ -423,12 +444,11 @@ function love.keypressed(key)
                 end
             end
         elseif key == "escape" then
-            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0
+            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0
         end
         return
     end
-    
-    -- Game state with victory
+
     if state == "game" and victory then
         if key == "space" or key == "return" then
             if currentLevel < levelsModule.totalLevels then
@@ -443,24 +463,24 @@ function love.keypressed(key)
                 state = "story"
             end
         elseif key == "m" then
-            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0
+            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0
         elseif key == "r" then
             loadLevel(currentLevel)
         end
         return
     end
-    
+
     if key == "escape" then
         if state == "editor" and editor.editingText then
             editor.editingText = false
-        elseif state == "game" then 
-            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0
-        elseif state == "options" then 
-            state = prevState 
+        elseif state == "game" then
+            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0
+        elseif state == "options" then
+            state = prevState
         elseif state == "editor" then
             state = "menu"; camZoom = 1.0; playMusic("menu")
-        else 
-            love.event.quit() 
+        else
+            love.event.quit()
         end
     elseif key == "r" and state == "game" then
         loadLevel(currentLevel)
@@ -468,7 +488,7 @@ function love.keypressed(key)
         if key == "=" or key == "+" then camZoom = math.min(camZoom * 1.25, 2.5)
         elseif key == "-" then camZoom = math.max(camZoom / 1.25, 0.35)
         elseif key == "0" then camZoom = 1.0
-        end 
+        end
     elseif key == "e" and state == "menu" and isDevMode then
         state = "editor"
         camZoom = 0.8
@@ -502,12 +522,11 @@ function love.keypressed(key)
             sounds.click:play()
         end
 
-        -- ── Text editing mode intercepts most keys ─────────────────────────
         if editor.editingText and editor.selectedText then
             if key == "backspace" then
                 local node = world.tutorialTexts and world.tutorialTexts[editor.selectedText]
                 if node and #node.text > 0 then
-                    -- UTF-8 safe backspace: step back over continuation bytes
+
                     local i = #node.text
                     while i > 1 and node.text:byte(i) >= 0x80 and node.text:byte(i) < 0xC0 do
                         i = i - 1
@@ -525,7 +544,6 @@ function love.keypressed(key)
             return
         end
 
-        -- ── Normal editor shortcuts ────────────────────────────────────────
         if ctrl and key == "z" then
             if #editor.undoStack > 0 then
                 world.walls = table.remove(editor.undoStack)
@@ -535,7 +553,7 @@ function love.keypressed(key)
         elseif (ctrl and key == "s") or key == "s" then
             doSave()
         elseif key == "t" then
-            -- Add new text node at camera centre
+
             if not world.tutorialTexts then world.tutorialTexts = {} end
             local gs = editor.gridSize
             local node = {
@@ -549,7 +567,7 @@ function love.keypressed(key)
             editor.editingText  = true
             sounds.hover:play()
         elseif key == "return" then
-            -- Start editing selected text node
+
             if editor.selectedText and world.tutorialTexts and world.tutorialTexts[editor.selectedText] then
                 editor.editingText = true
             end

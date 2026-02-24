@@ -4,7 +4,6 @@ function drawEditorUI()
     local LW  = editor.LEFT_W
     local RW  = editor.RIGHT_W
 
-    -- ── WORLD-SPACE OVERLAYS ──────────────────────────────────────────────────
     love.graphics.push()
     love.graphics.translate(w/2, h/2)
     love.graphics.scale(camZoom)
@@ -24,7 +23,6 @@ function drawEditorUI()
         end
     end
 
-    -- New-wall draw preview
     if editor.isDrawing and editor.curX then
         local rx  = math.min(editor.startX, editor.curX)
         local ry  = math.min(editor.startY, editor.curY)
@@ -43,7 +41,6 @@ function drawEditorUI()
         end
     end
 
-    -- Selected wall highlight + corner handles
     if editor.selectedWall and world.walls[editor.selectedWall] then
         local sw = world.walls[editor.selectedWall]
         love.graphics.setColor(0.05, 0.60, 1.0, 0.18)
@@ -61,12 +58,11 @@ function drawEditorUI()
         end
     end
 
-    -- Text node handles + previews
     if world.tutorialTexts then
         local r = 7 / camZoom
         for i, t in ipairs(world.tutorialTexts) do
             local isSel = (editor.selectedText == i)
-            -- Selection ring
+
             if isSel then
                 love.graphics.setColor(0.05, 0.60, 1.0, 0.22)
                 love.graphics.circle("fill", t.x, t.y, r * 2.4)
@@ -74,16 +70,16 @@ function drawEditorUI()
                 love.graphics.setLineWidth(1.8 / camZoom)
                 love.graphics.circle("line", t.x, t.y, r * 2.4)
             end
-            -- Handle dot (yellow)
+
             love.graphics.setColor(isSel and 0.05 or 0.92, isSel and 0.60 or 0.82, isSel and 1.0 or 0.28, 1)
             love.graphics.circle("fill", t.x, t.y, r)
             love.graphics.setColor(0, 0, 0, 0.30)
             love.graphics.setLineWidth(1.2 / camZoom)
             love.graphics.circle("line", t.x, t.y, r)
-            -- Text preview (scaled so it stays readable)
+
             local firstLine = (t.text:match("([^\n]+)") or t.text):sub(1, 26)
             if editor.editingText and isSel then
-                -- Blinking cursor
+
                 if math.floor(love.timer.getTime() * 2) % 2 == 0 then
                     firstLine = firstLine .. "|"
                 end
@@ -96,7 +92,6 @@ function drawEditorUI()
 
     love.graphics.pop()
 
-    -- ── TOP BAR ───────────────────────────────────────────────────────────────
     love.graphics.setColor(0.13, 0.13, 0.14, 1)
     love.graphics.rectangle("fill", 0, 0, w, TH)
     love.graphics.setColor(0.22, 0.22, 0.24, 1)
@@ -104,17 +99,17 @@ function drawEditorUI()
     love.graphics.line(0, TH, w, TH)
 
     love.graphics.setFont(fonts.main)
-    -- Center title
+
     love.graphics.setColor(0.42, 0.42, 0.44, 1)
     love.graphics.printf("DESIGNER", 0, (TH - fonts.main:getHeight())/2, w, "center")
-    -- Zoom % (centre-right)
+
     love.graphics.setColor(0.30, 0.30, 0.32, 1)
     love.graphics.printf(math.floor(camZoom * 100) .. "%", 0, (TH - fonts.main:getHeight())/2, w - RW - 16, "right")
-    -- Undo count (left side)
+
     love.graphics.setColor(0.28, 0.28, 0.30, 1)
     local undoLabel = #editor.undoStack > 0 and (#editor.undoStack .. " undo" .. (#editor.undoStack ~= 1 and "s" or "")) or "no undos"
     love.graphics.printf(undoLabel, LW + 8, (TH - fonts.main:getHeight())/2, 140, "left")
-    -- Save notif
+
     local notifAge = love.timer.getTime() - editor.saveNotifTime
     if notifAge < 2.0 then
         local a = math.min(1, (2.0 - notifAge) / 0.4)
@@ -122,7 +117,6 @@ function drawEditorUI()
         love.graphics.printf("Saved to clipboard!", LW + 160, (TH - fonts.main:getHeight())/2, 220, "center")
     end
 
-    -- ── LEFT PANEL ────────────────────────────────────────────────────────────
     love.graphics.setColor(0.13, 0.13, 0.14, 1)
     love.graphics.rectangle("fill", 0, TH, LW, h - TH)
     love.graphics.setColor(0.22, 0.22, 0.24, 1)
@@ -157,7 +151,6 @@ function drawEditorUI()
         end
     end
 
-    -- TEXT NODES sub-section
     local txSectY = listY + #editor.types * itemH + 6
     love.graphics.setColor(0.22, 0.22, 0.24, 1)
     love.graphics.line(8, txSectY, LW - 8, txSectY)
@@ -184,13 +177,11 @@ function drawEditorUI()
         end
     end
 
-    -- Bottom hints
     love.graphics.setColor(0.28, 0.28, 0.30, 1)
     love.graphics.printf("T — Add text", 0, h - 48, LW, "center")
     love.graphics.setColor(0.22, 0.22, 0.24, 1)
     love.graphics.printf("Ctrl+Z  Undo     G  Grid", 0, h - 28, LW, "center")
 
-    -- ── RIGHT PANEL ───────────────────────────────────────────────────────────
     local rpx = w - RW
     love.graphics.setColor(0.13, 0.13, 0.14, 1)
     love.graphics.rectangle("fill", rpx, TH, RW, h - TH)
@@ -215,7 +206,7 @@ function drawEditorUI()
     end
 
     if editor.selectedText and world.tutorialTexts and world.tutorialTexts[editor.selectedText] then
-        -- ── TEXT NODE PROPERTIES ──
+
         local t = world.tutorialTexts[editor.selectedText]
         propRow("X", t.x, py2)
         propRow("Y", t.y, py2 + rowH)
@@ -224,7 +215,6 @@ function drawEditorUI()
         love.graphics.setColor(0.32, 0.32, 0.34, 1)
         love.graphics.print("text", lx, py2 + rowH * 2 + 10)
 
-        -- Text content box
         local boxY = py2 + rowH * 3 + 2
         local boxH = 84
         love.graphics.setColor(0.09, 0.09, 0.10, 1)
@@ -241,7 +231,6 @@ function drawEditorUI()
         love.graphics.setColor(0.80, 0.80, 0.82, 1)
         love.graphics.printf(t.text .. cursor, rpx + 14, boxY + 6, RW - 28, "left")
 
-        -- Hint below box
         love.graphics.setColor(0.34, 0.34, 0.36, 1)
         if editor.editingText then
             love.graphics.printf("Esc — stop editing", rpx, boxY + boxH + 8, RW, "center")
@@ -249,14 +238,13 @@ function drawEditorUI()
             love.graphics.printf("Enter — edit text", rpx, boxY + boxH + 8, RW, "center")
         end
 
-        -- Delete button
         love.graphics.setColor(0.60, 0.12, 0.12, 1)
         love.graphics.rectangle("fill", rpx + 12, h - 46, RW - 24, 28, 4, 4)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf("DELETE  Del", rpx, h - 46 + (28 - fonts.main:getHeight())/2, RW, "center")
 
     elseif editor.selectedWall and world.walls[editor.selectedWall] then
-        -- ── WALL PROPERTIES ──
+
         local sw = world.walls[editor.selectedWall]
         propRow("X", sw.x, py2)
         propRow("Y", sw.y, py2 + rowH)
@@ -268,21 +256,19 @@ function drawEditorUI()
         if sw.id     then propRow("id",     sw.id,     py2 + rowH * 5 + 10) end
         if sw.target then propRow("target", sw.target, py2 + rowH * 6 + 10) end
 
-        -- Delete button
         love.graphics.setColor(0.60, 0.12, 0.12, 1)
         love.graphics.rectangle("fill", rpx + 12, h - 46, RW - 24, 28, 4, 4)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf("DELETE  Del", rpx, h - 46 + (28 - fonts.main:getHeight())/2, RW, "center")
 
     else
-        -- ── NO SELECTION HINTS ──
+
         love.graphics.setColor(0.26, 0.26, 0.28, 1)
         love.graphics.printf(
             "Click  —  select\nDrag  —  draw new\nDrag corner  —  resize\nDel  —  delete\n\nT  —  add text\nTab  —  next tile\n1–9  —  tile type\nF  —  fit view\nG  —  grid",
             rpx, TH + 52, RW, "center")
     end
 
-    -- Active operation strip (bottom of right panel)
     if editor.isDragging then
         love.graphics.setColor(0.05, 0.60, 1.0, 0.14)
         love.graphics.rectangle("fill", rpx, h - 50, RW, 22)
@@ -300,7 +286,6 @@ function drawEditorUI()
         love.graphics.printf("EDITING TEXT", rpx, h - 50 + (22 - fonts.main:getHeight())/2, RW, "center")
     end
 
-    -- Wall/text count footer
     love.graphics.setColor(0.24, 0.24, 0.26, 1)
     local txCount = (world.tutorialTexts and #world.tutorialTexts or 0)
     love.graphics.printf(#world.walls .. " walls  " .. txCount .. " texts", rpx, h - 26, RW, "center")

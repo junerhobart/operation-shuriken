@@ -1,7 +1,6 @@
 UI_BASE_W, UI_BASE_H = 1024, 768
-UI_MAX_ASPECT = 21/9    -- 2.333 — only pillarbox on ultra-wide monitors
+UI_MAX_ASPECT = 21/9
 
--- Returns true when the screen is taller than it is wide (phone portrait, etc.)
 function isPortraitScreen()
     local w, h = love.graphics.getDimensions()
     return h > w
@@ -9,11 +8,17 @@ end
 
 function getUIScale()
     local w, h = love.graphics.getDimensions()
-    -- Portrait: width is the constraint; landscape: take the smaller ratio
-    if h > w then
-        return w / UI_BASE_W
+    local portrait = h > w
+    local s
+    if portrait then
+
+        s = w / UI_BASE_W
+    else
+
+        s = math.min(w / UI_BASE_W, h / UI_BASE_H)
     end
-    return math.min(w / UI_BASE_W, h / UI_BASE_H)
+
+    return math.max(0.38, math.min(s, 2.2))
 end
 
 function getUIViewport()
@@ -21,7 +26,7 @@ function getUIViewport()
     local aspect = w / h
     local vw, vh = w, h
     local ox, oy = 0, 0
-    -- Only constrain ultra-wide; portrait screens are fine as-is
+
     if aspect > UI_MAX_ASPECT then
         vw = h * UI_MAX_ASPECT
         ox = (w - vw) / 2
@@ -38,7 +43,7 @@ end
 function drawLetterbox()
     local w, h = love.graphics.getDimensions()
     local aspect = w / h
-    -- Only draw side bars on ultra-wide screens; never black-bar portrait
+
     if aspect > UI_MAX_ASPECT then
         local vw = h * UI_MAX_ASPECT
         local barW = (w - vw) / 2
@@ -68,42 +73,36 @@ end
 
 function drawButton(btn, label, font)
     local x, y, w, h = btn.x, btn.y, btn.w, btn.h
-    local s = btn.scale
-    local cx, cy = x + w/2, y + h/2
-    local sw, sh = w * s * btn.squashX, h * s * btn.squashY
-    local sx, sy = cx - sw/2, cy - sh/2
+    local s  = btn.scale
+    local cx = x + w / 2
+    local cy = y + h / 2
 
-    -- Scale the font to match the button's actual rendered height.
-    -- btn.baseH is set in love.resize to the intended height at scale=1.
-    local baseH = btn.baseH or h
-    local ts = h / baseH   -- text scale factor relative to design size
-    local lw = math.max(1.5, 2 * ts * s)
+    local dw = w * s * btn.squashX
+    local dh = h * s * btn.squashY
+    local dx = cx - dw / 2
+    local dy = cy - dh / 2
+    local r  = math.max(6, dh * 0.10)
+    local lw = math.max(1.5, dh * 0.028)
 
-    love.graphics.push()
-    love.graphics.translate(cx, cy); love.graphics.rotate(btn.rotation); love.graphics.translate(-cx, -cy)
-    -- Offset drop shadow
-    love.graphics.setColor(0.10, 0.10, 0.10, 0.22)
-    love.graphics.rectangle("fill", sx + 3*ts, sy + 4*ts, sw, sh, 5*ts, 5*ts)
-    -- Paper white fill
+    love.graphics.setColor(0.10, 0.10, 0.10, 0.18)
+    love.graphics.rectangle("fill", dx + 3, dy + 5, dw, dh, r, r)
+
     love.graphics.setColor(0.98, 0.97, 0.95, 1)
-    love.graphics.rectangle("fill", sx, sy, sw, sh, 5*ts, 5*ts)
-    -- Black border
+    love.graphics.rectangle("fill", dx, dy, dw, dh, r, r)
+
     love.graphics.setColor(0.10, 0.10, 0.10, 1)
     love.graphics.setLineWidth(lw)
-    love.graphics.rectangle("line", sx, sy, sw, sh, 5*ts, 5*ts)
-    -- Label: scale the text proportionally so it fills the button
-    love.graphics.push()
-    love.graphics.translate(cx, cy)
-    love.graphics.scale(ts * s * btn.squashX, ts * s * btn.squashY)
-    love.graphics.translate(-cx, -cy)
+    love.graphics.rectangle("line", dx, dy, dw, dh, r, r)
+
     love.graphics.setFont(font)
     love.graphics.setColor(0.10, 0.10, 0.10, 1)
-    love.graphics.printf(label, x, y + (h - font:getHeight()) / 2, w, "center")
-    love.graphics.pop(); love.graphics.pop()
+    local fh      = font:getHeight()
+    local textW   = dw * 0.80
+    local textX   = dx + dw * 0.10
+    local textY   = dy + (dh - fh) / 2
+    love.graphics.printf(label, textX, textY, textW, "center")
 end
 
--- Draws a paper-style button with a given alpha (0-1).
--- bx,by,bw,bh are the unscaled rect; hovered adds a slight scale.
 function drawVictoryButton(bx, by, bw, bh, label, alpha, hovered)
     local s   = hovered and 1.06 or 1.0
     local cx  = bx + bw / 2
@@ -150,30 +149,24 @@ function updateButton(btn, dt, mx, my)
     btn.scale = btn.scale + (btn.targetScale - btn.scale) * dt * 14
 end
 
--- ── LEVEL SELECT HELPERS ─────────────────────────────────────────────────────
-
--- Level select geometry — full-page seamless layout (no panel window).
--- cx is the chain centre column. nodeRadius and rowH define node sizing.
 function levelSelectPanelGeom(sw, sh)
-    local nodeRadius = math.max(math.min(math.floor(sh * 0.042), 32), 18)
-    local rowH       = nodeRadius * 3.6
-    -- panelX/panelY/panelW/panelH kept for scroll clamp calcs; treat as the
-    -- visible content area (inset a little from screen edges).
-    local padH  = 80
-    local panelX = 0
-    local panelY = padH
-    local panelW = sw
-    local panelH = sh - padH * 2
-    return panelX, panelY, panelW, panelH, nodeRadius, 1, rowH, 0, 0
+    local portrait   = sh > sw
+    local nodeRadius = math.max(math.min(
+        portrait and math.floor(sw * 0.055) or math.floor(sh * 0.038), 30), 16)
+    local rowH   = nodeRadius * 3.8
+
+    local topPad = math.floor(portrait and sh * 0.18 or sh * 0.20)
+    local botPad = math.floor(portrait and sh * 0.08 or sh * 0.07)
+    return 0, topPad, sw, sh - topPad - botPad, nodeRadius, 1, rowH, 0, 0
 end
 
--- Returns {x,y} for each level node in a vertical chain with gentle sway.
 function levelSelectNodePositions(panelX, panelY, panelH, nodeRadius, _npr, rowH, _spX, _hPad, scroll)
-    local sw   = love.graphics.getWidth()
-    local cx   = sw / 2
-    local sway = math.min(sw * 0.10, 60)
-    -- Level 1 at bottom, last level at top
-    local baseY = panelY + panelH - nodeRadius - 20 + scroll
+    local sw, sh = love.graphics.getDimensions()
+    local portrait = sh > sw
+
+    local cx   = portrait and sw / 2 or sw * 0.38
+    local sway = math.min(sw * 0.07, 40)
+    local baseY = panelY + panelH - nodeRadius - 16 + scroll
 
     local positions = {}
     for i = 1, levelsModule.totalLevels do
@@ -186,17 +179,33 @@ function levelSelectNodePositions(panelX, panelY, panelH, nodeRadius, _npr, rowH
     return positions, contentH
 end
 
--- Compatibility shim used by handlers.lua hit-testing.
 function levelSelectLayout(sw, sh)
     local panelX, panelY, panelW, panelH, nodeRadius, _, rowH = levelSelectPanelGeom(sw, sh)
     return 1, nodeRadius, 0, rowH, panelX, panelY, panelW, panelH, 0
 end
 
+local function drawLockIcon(cx, cy, s, col, alpha)
+    love.graphics.setColor(col[1], col[2], col[3], alpha)
+
+    local bw = s * 1.05
+    local bh = s * 0.72
+    local bx = cx - bw / 2
+    local by = cy - s * 0.08
+    love.graphics.rectangle("fill", bx, by, bw, bh, s * 0.16, s * 0.16)
+
+    local arcCY  = by - s * 0.02
+    local arcR   = s * 0.34
+    local lw     = math.max(2.5, s * 0.20)
+    love.graphics.setLineWidth(lw)
+    love.graphics.arc("line", "open", cx, arcCY, arcR, math.pi, 0)
+end
+
 function drawLevelSelect()
-    local sw, sh = love.graphics.getDimensions()
-    local scale  = getUIScale()
-    local t      = levelSelectTime
-    local scroll = levelSelectScroll or 0
+    local sw, sh    = love.graphics.getDimensions()
+    local scale     = getUIScale()
+    local portrait  = sh > sw
+    local t         = levelSelectTime
+    local scroll    = levelSelectScroll or 0
 
     local panelX, panelY, panelW, panelH, nodeRadius, _, rowH = levelSelectPanelGeom(sw, sh)
 
@@ -207,29 +216,27 @@ function drawLevelSelect()
 
     local positions = levelSelectNodePositions(panelX, panelY, panelH, nodeRadius, 1, rowH, 0, 0, scroll)
 
-    -- ── FULL-PAGE PAPER BACKGROUND (same as options) ───────────────────────
     love.graphics.setColor(0.97, 0.96, 0.93, math.min(t * 6, 0.92))
     love.graphics.rectangle("fill", 0, 0, sw, sh)
 
     local pageA = math.min(t * 5, 1)
 
-    -- ── TITLE (same treatment as Options) ─────────────────────────────────
     local titleOff = (1 - easeOutBounce(math.min(t * 2.8, 1))) * -50
+    local titleY   = portrait and sh * 0.045 or sh * 0.055
     love.graphics.setFont(fonts.large)
     love.graphics.setColor(0.08, 0.08, 0.08, pageA)
-    love.graphics.printf("Select Mission", 0, 28 * scale + titleOff, sw, "center")
+    love.graphics.printf("Select Mission", 0, titleY + titleOff, sw, "center")
 
-    -- Rule under title
-    local ruleW = 360 * scale
-    local ruleY = 90 * scale + titleOff
-    love.graphics.setColor(0.55, 0.55, 0.55, pageA)
+    local ruleY = titleY + fonts.large:getHeight() + 10 + titleOff
+    local ruleW = math.min(sw * 0.45, 360 * scale)
+    love.graphics.setColor(0.55, 0.55, 0.55, pageA * 0.8)
     love.graphics.setLineWidth(1.5)
     love.graphics.line(sw/2 - ruleW/2, ruleY, sw/2 + ruleW/2, ruleY)
 
-    -- ── SCISSOR to content area ────────────────────────────────────────────
-    love.graphics.setScissor(0, panelY, sw, panelH)
+    local scissorTop = panelY
+    local footerH    = portrait and sh * 0.07 or sh * 0.065
+    love.graphics.setScissor(0, scissorTop, sw, sh - scissorTop - footerH)
 
-    -- ── PATH ──────────────────────────────────────────────────────────────
     for i = 1, levelsModule.totalLevels - 1 do
         local p1 = positions[i]
         local p2 = positions[i + 1]
@@ -239,15 +246,19 @@ function drawLevelSelect()
             if prog > 0 then
                 local ex = p1.x + (p2.x - p1.x) * prog
                 local ey = p1.y + (p2.y - p1.y) * prog
-                love.graphics.setColor(0.70, 0.70, 0.70, 0.7 * prog)
-                love.graphics.setLineWidth(2)
+                love.graphics.setColor(0.72, 0.72, 0.72, 0.65 * prog)
+                love.graphics.setLineWidth(1.5)
                 love.graphics.line(p1.x, p1.y, ex, ey)
             end
         end
     end
 
-    -- ── NODES ─────────────────────────────────────────────────────────────
     local mx, my = love.mouse.getPosition()
+
+    local nameColX = portrait and 0 or (sw * 0.38 + nodeRadius * 1.4 + 12)
+
+    love.graphics.setFont(fonts.main)
+    local fh = fonts.main:getHeight()
 
     for i = 1, levelsModule.totalLevels do
         local lvl       = levelsModule.get(i)
@@ -256,96 +267,98 @@ function drawLevelSelect()
         local unlocked  = isLevelUnlocked(i)
         local completed = completedLevels[i] == true
 
-        local delay = 0.10 + (i - 1) * 0.032
-        local prog  = math.max(0, math.min((t - delay) * 4, 1))
+        local delay = 0.10 + (i - 1) * 0.030
+        local prog  = math.max(0, math.min((t - delay) * 4.5, 1))
         if prog <= 0 then break end
 
         local bounce = easeOutBounce(prog)
         local nx, ny = pos.x, pos.y
-        local dist   = math.sqrt((mx-nx)^2 + (my-ny)^2)
-        local hov    = unlocked and dist < nodeRadius + 10
+        local dist   = math.sqrt((mx - nx)^2 + (my - ny)^2)
+        local hov    = unlocked and dist < nodeRadius + 12
         local r      = nodeRadius * bounce * (hov and 1.10 or 1.0)
 
-        -- Drop shadow
-        love.graphics.setColor(0.10, 0.10, 0.10, 0.12 * bounce)
+        love.graphics.setColor(0.10, 0.10, 0.10, 0.10 * bounce)
         love.graphics.circle("fill", nx + 2, ny + 3, r)
 
-        -- Circle fill
         if completed then
-            love.graphics.setColor(0.88, 0.97, 0.88, bounce)
+            love.graphics.setColor(0.87, 0.96, 0.87, bounce)
         elseif not unlocked then
-            love.graphics.setColor(0.92, 0.91, 0.90, bounce * 0.8)
+            love.graphics.setColor(0.91, 0.90, 0.89, bounce * 0.75)
+        elseif hov then
+            love.graphics.setColor(1.0, 1.0, 0.98, bounce)
         else
             love.graphics.setColor(0.98, 0.97, 0.95, bounce)
         end
         love.graphics.circle("fill", nx, ny, r)
 
-        -- Circle border
         love.graphics.setLineWidth(2)
         if completed then
             love.graphics.setColor(0.22, 0.65, 0.35, bounce)
         elseif unlocked then
-            love.graphics.setColor(0.10, 0.10, 0.10, (hov and 1 or 0.8) * bounce)
+            love.graphics.setColor(0.10, 0.10, 0.10, (hov and 1 or 0.75) * bounce)
         else
-            love.graphics.setColor(0.65, 0.65, 0.65, 0.6 * bounce)
+            love.graphics.setColor(0.68, 0.68, 0.68, 0.5 * bounce)
         end
         love.graphics.circle("line", nx, ny, r)
 
-        -- Number
-        love.graphics.setFont(fonts.main)
-        if completed then
-            love.graphics.setColor(0.18, 0.55, 0.30, bounce)
-        elseif unlocked then
-            love.graphics.setColor(0.10, 0.10, 0.10, bounce)
+        if unlocked then
+
+            love.graphics.setFont(fonts.main)
+            if completed then
+                love.graphics.setColor(0.18, 0.55, 0.30, bounce)
+            else
+                love.graphics.setColor(0.10, 0.10, 0.10, (hov and 1 or 0.85) * bounce)
+            end
+            love.graphics.printf(tostring(i), nx - 50, ny - fh/2 + 1, 100, "center")
+
+            local nameX = portrait and (nx + r + 14) or nameColX
+            love.graphics.setColor(0.28, 0.28, 0.28, (hov and 1 or 0.85) * bounce)
+            love.graphics.print(lvl and lvl.name or "", nameX, ny - fh/2)
+
+            if completed then
+                local bx2, by2 = nx + r * 0.60, ny - r * 0.60
+                love.graphics.setColor(0.22, 0.65, 0.35, bounce)
+                love.graphics.circle("fill", bx2, by2, r * 0.28)
+                love.graphics.setColor(1, 1, 1, bounce)
+                love.graphics.setLineWidth(1.5)
+                local cs = r * 0.12
+                love.graphics.line(bx2 - cs, by2 + cs*0.1,
+                                   bx2 - cs*0.1, by2 + cs*0.9,
+                                   bx2 + cs, by2 - cs*0.7)
+            end
         else
-            love.graphics.setColor(0.60, 0.60, 0.60, 0.7 * bounce)
-        end
-        love.graphics.printf(tostring(i), nx - 50, ny - fonts.main:getHeight()/2 + 1, 100, "center")
 
-        -- Level name to the right
-        local nameA = (unlocked and bounce or bounce * 0.4)
-        love.graphics.setColor(0.25, 0.25, 0.25, nameA)
-        love.graphics.print(lvl and lvl.name or "", nx + r + 14, ny - fonts.main:getHeight()/2)
+            love.graphics.setFont(fonts.main)
+            love.graphics.setColor(0.62, 0.62, 0.62, 0.65 * bounce)
+            love.graphics.printf("?", nx - 50, ny - fh / 2 + 1, 100, "center")
 
-        -- Checkmark badge
-        if completed then
-            local bx2, by2 = nx + r * 0.62, ny - r * 0.62
-            love.graphics.setColor(0.22, 0.65, 0.35, bounce)
-            love.graphics.circle("fill", bx2, by2, r * 0.26)
-            love.graphics.setColor(1, 1, 1, bounce)
-            love.graphics.setLineWidth(1.5)
-            local cs = r * 0.11
-            love.graphics.line(bx2-cs, by2, bx2-cs*0.2, by2+cs*0.9, bx2+cs, by2-cs*0.8)
-        end
-
-        -- Lock icon
-        if not unlocked then
-            love.graphics.setColor(0.60, 0.60, 0.60, 0.6 * bounce)
-            love.graphics.setLineWidth(1.5)
-            local ls = r * 0.25
-            love.graphics.rectangle("line", nx-ls, ny, ls*2, ls*1.3, 2, 2)
-            love.graphics.arc("line", "open", nx, ny, ls*0.6, math.pi, 0)
+            love.graphics.setFont(fonts.main)
+            local nameX = nx + r + 14
+            love.graphics.setColor(0.72, 0.72, 0.72, 0.42 * bounce)
+            love.graphics.print("· · · · ·", nameX, ny - fh / 2)
         end
     end
 
     love.graphics.setScissor()
 
-    -- ── SCROLLBAR ─────────────────────────────────────────────────────────
     if maxScroll > 0 then
-        local barH = panelH - 16
-        local thmH = math.max(30, barH * panelH / (contentH + nodeRadius * 2))
-        local thmY = panelY + 8 + (scroll / maxScroll) * (barH - thmH)
-        love.graphics.setColor(0.10, 0.10, 0.10, 0.07)
-        love.graphics.rectangle("fill", sw - 8, panelY + 6, 4, barH, 2, 2)
-        love.graphics.setColor(0.10, 0.10, 0.10, 0.22)
-        love.graphics.rectangle("fill", sw - 8, thmY, 4, thmH, 2, 2)
+        local sbX   = sw - (portrait and 6 or 8)
+        local sbW   = portrait and 3 or 4
+        local barH  = sh - scissorTop - footerH - 12
+        local thmH  = math.max(28, barH * panelH / (contentH + nodeRadius * 2))
+        local thmY  = scissorTop + 6 + (scroll / maxScroll) * (barH - thmH)
+        love.graphics.setColor(0.10, 0.10, 0.10, 0.06)
+        love.graphics.rectangle("fill", sbX, scissorTop + 4, sbW, barH, 2, 2)
+        love.graphics.setColor(0.10, 0.10, 0.10, 0.20)
+        love.graphics.rectangle("fill", sbX, thmY, sbW, thmH, 2, 2)
     end
 
-    -- ── FOOTER ────────────────────────────────────────────────────────────
     local footerA = math.min(math.max(t - 0.3, 0) / 0.25, 1)
+    local isMobile = love.system.getOS() == "iOS" or love.system.getOS() == "Android"
+    local hint = isMobile and "Tap a level to play" or "Click a level  ·  ESC to go back"
     love.graphics.setFont(fonts.main)
-    love.graphics.setColor(0.55, 0.55, 0.55, footerA)
-    love.graphics.printf("ESC — back", 0, sh - 36 * scale, sw, "center")
+    love.graphics.setColor(0.58, 0.58, 0.58, footerA)
+    love.graphics.printf(hint, 0, sh - footerH * 0.55, sw, "center")
 end
 
 function drawStory()
@@ -353,41 +366,34 @@ function drawStory()
     local scale = getUIScale()
     local lvl = levelsModule.get(currentLevel)
     if not lvl then return end
-    
+
     local text = storyType == "pre" and lvl.storyPre or lvl.storyPost
     if not text then return end
-    
-    -- Paper background with fade-in
+
     local fadeIn = math.min(storyTime / 0.5, 1)
     love.graphics.setColor(0.97, 0.96, 0.93, fadeIn)
     love.graphics.rectangle("fill", 0, 0, w, h)
-    
-    -- Typewriter effect (UTF-8 safe)
+
     local charCount = math.floor(storyTime * 40)
     local displayText = utf8sub(text, charCount)
 
-    -- Act and level header
     love.graphics.setFont(fonts.main)
     love.graphics.setColor(0.55, 0.55, 0.55, fadeIn)
     love.graphics.printf("ACT " .. (lvl.act or "I") .. "  LEVEL " .. currentLevel, 0, h/2 - 120 * scale, w, "center")
 
-    -- Level name
     love.graphics.setFont(fonts.options)
     love.graphics.setColor(0.10, 0.10, 0.10, fadeIn)
     love.graphics.printf(lvl.name, 0, h/2 - 90 * scale, w, "center")
 
-    -- Thin rule
     local ruleW = 280 * scale
     love.graphics.setColor(0.55, 0.55, 0.55, fadeIn * 0.6)
     love.graphics.setLineWidth(1)
     love.graphics.line(w/2 - ruleW/2, h/2 - 50 * scale, w/2 + ruleW/2, h/2 - 50 * scale)
 
-    -- Story text
     love.graphics.setFont(fonts.main)
     love.graphics.setColor(0.25, 0.25, 0.25, fadeIn)
     love.graphics.printf(displayText, w/2 - 200 * scale, h/2 - 30 * scale, 400 * scale, "center")
 
-    -- Continue hint (no button — tap anywhere / press space)
     if charCount >= utf8len(text) then
         local blink = math.sin(love.timer.getTime() * 2.5) * 0.25 + 0.75
         local isMobile = love.system.getOS() == "iOS" or love.system.getOS() == "Android"
@@ -398,7 +404,6 @@ function drawStory()
     end
 end
 
--- UTF-8 safe substring (returns first n characters)
 function utf8sub(s, n)
     local count = 0
     local i = 1
@@ -413,7 +418,6 @@ function utf8sub(s, n)
     return s:sub(1, i - 1)
 end
 
--- UTF-8 safe string length (character count)
 function utf8len(s)
     local count = 0
     local i = 1
@@ -434,7 +438,6 @@ function drawEditorUI()
     local LW  = editor.LEFT_W
     local RW  = editor.RIGHT_W
 
-    -- ── WORLD-SPACE OVERLAYS ──────────────────────────────────────────────────
     love.graphics.push()
     love.graphics.translate(w/2, h/2)
     love.graphics.scale(camZoom)
@@ -454,7 +457,6 @@ function drawEditorUI()
         end
     end
 
-    -- New-wall draw preview
     if editor.isDrawing and editor.curX then
         local rx  = math.min(editor.startX, editor.curX)
         local ry  = math.min(editor.startY, editor.curY)
@@ -473,7 +475,6 @@ function drawEditorUI()
         end
     end
 
-    -- Selected wall highlight + corner handles
     if editor.selectedWall and world.walls[editor.selectedWall] then
         local sw = world.walls[editor.selectedWall]
         love.graphics.setColor(0.05, 0.60, 1.0, 0.18)
@@ -491,12 +492,11 @@ function drawEditorUI()
         end
     end
 
-    -- Text node handles + previews
     if world.tutorialTexts then
         local r = 7 / camZoom
         for i, t in ipairs(world.tutorialTexts) do
             local isSel = (editor.selectedText == i)
-            -- Selection ring
+
             if isSel then
                 love.graphics.setColor(0.05, 0.60, 1.0, 0.22)
                 love.graphics.circle("fill", t.x, t.y, r * 2.4)
@@ -504,16 +504,16 @@ function drawEditorUI()
                 love.graphics.setLineWidth(1.8 / camZoom)
                 love.graphics.circle("line", t.x, t.y, r * 2.4)
             end
-            -- Handle dot (yellow)
+
             love.graphics.setColor(isSel and 0.05 or 0.92, isSel and 0.60 or 0.82, isSel and 1.0 or 0.28, 1)
             love.graphics.circle("fill", t.x, t.y, r)
             love.graphics.setColor(0, 0, 0, 0.30)
             love.graphics.setLineWidth(1.2 / camZoom)
             love.graphics.circle("line", t.x, t.y, r)
-            -- Text preview (scaled so it stays readable)
+
             local firstLine = (t.text:match("([^\n]+)") or t.text):sub(1, 26)
             if editor.editingText and isSel then
-                -- Blinking cursor
+
                 if math.floor(love.timer.getTime() * 2) % 2 == 0 then
                     firstLine = firstLine .. "|"
                 end
@@ -526,7 +526,6 @@ function drawEditorUI()
 
     love.graphics.pop()
 
-    -- ── TOP BAR ───────────────────────────────────────────────────────────────
     love.graphics.setColor(0.13, 0.13, 0.14, 1)
     love.graphics.rectangle("fill", 0, 0, w, TH)
     love.graphics.setColor(0.22, 0.22, 0.24, 1)
@@ -534,17 +533,17 @@ function drawEditorUI()
     love.graphics.line(0, TH, w, TH)
 
     love.graphics.setFont(fonts.main)
-    -- Center title
+
     love.graphics.setColor(0.42, 0.42, 0.44, 1)
     love.graphics.printf("DESIGNER", 0, (TH - fonts.main:getHeight())/2, w, "center")
-    -- Zoom % (centre-right)
+
     love.graphics.setColor(0.30, 0.30, 0.32, 1)
     love.graphics.printf(math.floor(camZoom * 100) .. "%", 0, (TH - fonts.main:getHeight())/2, w - RW - 16, "right")
-    -- Undo count (left side)
+
     love.graphics.setColor(0.28, 0.28, 0.30, 1)
     local undoLabel = #editor.undoStack > 0 and (#editor.undoStack .. " undo" .. (#editor.undoStack ~= 1 and "s" or "")) or "no undos"
     love.graphics.printf(undoLabel, LW + 8, (TH - fonts.main:getHeight())/2, 140, "left")
-    -- Save notif
+
     local notifAge = love.timer.getTime() - editor.saveNotifTime
     if notifAge < 2.0 then
         local a = math.min(1, (2.0 - notifAge) / 0.4)
@@ -552,7 +551,6 @@ function drawEditorUI()
         love.graphics.printf("Saved to clipboard!", LW + 160, (TH - fonts.main:getHeight())/2, 220, "center")
     end
 
-    -- ── LEFT PANEL ────────────────────────────────────────────────────────────
     love.graphics.setColor(0.13, 0.13, 0.14, 1)
     love.graphics.rectangle("fill", 0, TH, LW, h - TH)
     love.graphics.setColor(0.22, 0.22, 0.24, 1)
@@ -587,7 +585,6 @@ function drawEditorUI()
         end
     end
 
-    -- TEXT NODES sub-section
     local txSectY = listY + #editor.types * itemH + 6
     love.graphics.setColor(0.22, 0.22, 0.24, 1)
     love.graphics.line(8, txSectY, LW - 8, txSectY)
@@ -614,13 +611,11 @@ function drawEditorUI()
         end
     end
 
-    -- Bottom hints
     love.graphics.setColor(0.28, 0.28, 0.30, 1)
     love.graphics.printf("T — Add text", 0, h - 48, LW, "center")
     love.graphics.setColor(0.22, 0.22, 0.24, 1)
     love.graphics.printf("Ctrl+Z  Undo     G  Grid", 0, h - 28, LW, "center")
 
-    -- ── RIGHT PANEL ───────────────────────────────────────────────────────────
     local rpx = w - RW
     love.graphics.setColor(0.13, 0.13, 0.14, 1)
     love.graphics.rectangle("fill", rpx, TH, RW, h - TH)
@@ -645,7 +640,7 @@ function drawEditorUI()
     end
 
     if editor.selectedText and world.tutorialTexts and world.tutorialTexts[editor.selectedText] then
-        -- ── TEXT NODE PROPERTIES ──
+
         local t = world.tutorialTexts[editor.selectedText]
         propRow("X", t.x, py2)
         propRow("Y", t.y, py2 + rowH)
@@ -654,7 +649,6 @@ function drawEditorUI()
         love.graphics.setColor(0.32, 0.32, 0.34, 1)
         love.graphics.print("text", lx, py2 + rowH * 2 + 10)
 
-        -- Text content box
         local boxY = py2 + rowH * 3 + 2
         local boxH = 84
         love.graphics.setColor(0.09, 0.09, 0.10, 1)
@@ -671,7 +665,6 @@ function drawEditorUI()
         love.graphics.setColor(0.80, 0.80, 0.82, 1)
         love.graphics.printf(t.text .. cursor, rpx + 14, boxY + 6, RW - 28, "left")
 
-        -- Hint below box
         love.graphics.setColor(0.34, 0.34, 0.36, 1)
         if editor.editingText then
             love.graphics.printf("Esc — stop editing", rpx, boxY + boxH + 8, RW, "center")
@@ -679,14 +672,13 @@ function drawEditorUI()
             love.graphics.printf("Enter — edit text", rpx, boxY + boxH + 8, RW, "center")
         end
 
-        -- Delete button
         love.graphics.setColor(0.60, 0.12, 0.12, 1)
         love.graphics.rectangle("fill", rpx + 12, h - 46, RW - 24, 28, 4, 4)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf("DELETE  Del", rpx, h - 46 + (28 - fonts.main:getHeight())/2, RW, "center")
 
     elseif editor.selectedWall and world.walls[editor.selectedWall] then
-        -- ── WALL PROPERTIES ──
+
         local sw = world.walls[editor.selectedWall]
         propRow("X", sw.x, py2)
         propRow("Y", sw.y, py2 + rowH)
@@ -698,21 +690,19 @@ function drawEditorUI()
         if sw.id     then propRow("id",     sw.id,     py2 + rowH * 5 + 10) end
         if sw.target then propRow("target", sw.target, py2 + rowH * 6 + 10) end
 
-        -- Delete button
         love.graphics.setColor(0.60, 0.12, 0.12, 1)
         love.graphics.rectangle("fill", rpx + 12, h - 46, RW - 24, 28, 4, 4)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf("DELETE  Del", rpx, h - 46 + (28 - fonts.main:getHeight())/2, RW, "center")
 
     else
-        -- ── NO SELECTION HINTS ──
+
         love.graphics.setColor(0.26, 0.26, 0.28, 1)
         love.graphics.printf(
             "Click  —  select\nDrag  —  draw new\nDrag corner  —  resize\nDel  —  delete\n\nT  —  add text\nTab  —  next tile\n1–9  —  tile type\nF  —  fit view\nG  —  grid",
             rpx, TH + 52, RW, "center")
     end
 
-    -- Active operation strip (bottom of right panel)
     if editor.isDragging then
         love.graphics.setColor(0.05, 0.60, 1.0, 0.14)
         love.graphics.rectangle("fill", rpx, h - 50, RW, 22)
@@ -730,7 +720,6 @@ function drawEditorUI()
         love.graphics.printf("EDITING TEXT", rpx, h - 50 + (22 - fonts.main:getHeight())/2, RW, "center")
     end
 
-    -- Wall/text count footer
     love.graphics.setColor(0.24, 0.24, 0.26, 1)
     local txCount = (world.tutorialTexts and #world.tutorialTexts or 0)
     love.graphics.printf(#world.walls .. " walls  " .. txCount .. " texts", rpx, h - 26, RW, "center")
@@ -741,34 +730,29 @@ function drawOptions()
     local scale = getUIScale()
     local cx = w / 2
 
-    -- Drop animation
     local dropDist = 60 * scale
     local function drop(delay, dur)
         local p = easeOutBounce(math.min(math.max(optionsTime - delay, 0) / dur, 1))
         return -dropDist * (1 - p)
     end
 
-    -- Paper background (matches main menu)
     love.graphics.setColor(0.97, 0.96, 0.93, math.min(optionsTime * 6, 0.92))
     love.graphics.rectangle("fill", 0, 0, w, h)
 
-    -- Title
     local titleOff = drop(0, 0.28)
     love.graphics.setFont(fonts.large)
     love.graphics.setColor(0.08, 0.08, 0.08, 1)
     love.graphics.printf("Options", 0, 60 * scale + titleOff, w, "center")
 
-    -- Rule under title
     local ruleW = 320 * scale
     local ruleY = 140 * scale + titleOff
     love.graphics.setColor(0.55, 0.55, 0.55, 1)
     love.graphics.setLineWidth(1.5)
     love.graphics.line(cx - ruleW/2, ruleY, cx + ruleW/2, ruleY)
 
-    -- Tabs
     local tabs = {"General", "Audio", "Display"}
-    local tabSpacing = 140 * scale
-    local tabY = 165 * scale + drop(0.05, 0.28)
+    local tabSpacing = math.min(140 * scale, w * 0.28)
+    local tabY = math.min(165 * scale, h * 0.22) + drop(0.05, 0.28)
     local tabStartX = cx - tabSpacing
 
     love.graphics.setFont(fonts.main)
@@ -788,12 +772,11 @@ function drawOptions()
         end
     end
 
-    -- Content
     local cOff = drop(0.10, 0.28)
-    local contentW = 420 * scale
+    local contentW = math.min(420 * scale, w * 0.88)
     local contentX = cx - contentW / 2
-    local contentY = 240 * scale + cOff
-    local rowH = 90 * scale
+    local contentY = math.min(240 * scale, h * 0.32) + cOff
+    local rowH = math.min(90 * scale, h * 0.14)
 
     if optionsTab == "General" then
         drawSlider("Field of View",    settings.fov,            70, 120, contentX, contentY,          contentW, function(v) settings.fov = v end)
@@ -807,36 +790,37 @@ function drawOptions()
             function(v) settings.fullscreen = v; if love.system.getOS() ~= "Web" then love.window.setFullscreen(v) end end)
     end
 
-    -- Footer
     local footerA = math.min(math.max(optionsTime - 0.25, 0) / 0.20, 1)
+    local isMobile = love.system.getOS() == "iOS" or love.system.getOS() == "Android"
+    local closeHint = isMobile and "Tap outside to close" or "ESC — close"
     love.graphics.setFont(fonts.main)
     love.graphics.setColor(0.55, 0.55, 0.55, footerA)
-    love.graphics.printf("ESC — close", 0, h - 50 * scale, w, "center")
+    love.graphics.printf(closeHint, 0, h - math.max(44 * scale, h * 0.06), w, "center")
 end
 
 function drawSlider(label, val, min, max, x, y, w, callback)
     love.graphics.setFont(fonts.main)
-    -- Label
+
     love.graphics.setColor(0.18, 0.18, 0.18, 1)
     love.graphics.print(label, x, y - 28)
-    -- Value readout
+
     local valStr = string.format(max <= 2 and "%.2f" or "%.0f", val)
     love.graphics.setColor(0.52, 0.52, 0.50, 1)
     love.graphics.printf(valStr, x, y - 28, w, "right")
-    -- Track background
+
     love.graphics.setColor(0.78, 0.77, 0.74, 1)
     love.graphics.rectangle("fill", x, y - 1, w, 4, 2, 2)
-    -- Track fill (black)
+
     local fillW = math.max(0, (val - min) / (max - min) * w)
     love.graphics.setColor(0.12, 0.12, 0.12, 1)
     love.graphics.rectangle("fill", x, y - 1, fillW, 4, 2, 2)
-    -- Thumb: paper white + black border
+
     love.graphics.setColor(0.98, 0.97, 0.95, 1)
     love.graphics.circle("fill", x + fillW, y + 1, 8)
     love.graphics.setColor(0.12, 0.12, 0.12, 1)
     love.graphics.setLineWidth(2)
     love.graphics.circle("line", x + fillW, y + 1, 8)
-    -- Interaction
+
     local mx, my = love.mouse.getPosition()
     if mx > x - 12 and mx < x + w + 12 and my > y - 18 and my < y + 22 and love.mouse.isDown(1) then
         callback(math.max(min, math.min(max, min + (mx - x) / w * (max - min))))
@@ -849,15 +833,15 @@ function drawSwitch(label, val, x, y, contentW, callback)
     love.graphics.print(label, x, y + 5)
     local sw, sh = 48, 26
     local sx = x + contentW - sw
-    -- Track fill
+
     if val then love.graphics.setColor(0.10, 0.10, 0.10, 1)
     else love.graphics.setColor(0.78, 0.77, 0.74, 1) end
     love.graphics.rectangle("fill", sx, y, sw, sh, sh/2, sh/2)
-    -- Track border
+
     love.graphics.setColor(0.12, 0.12, 0.12, 1)
     love.graphics.setLineWidth(1.5)
     love.graphics.rectangle("line", sx, y, sw, sh, sh/2, sh/2)
-    -- Knob: paper white + black border
+
     love.graphics.setColor(0.98, 0.97, 0.95, 1)
     local knobR = sh/2 - 3
     local kx = val and sx + sw - knobR - 3 or sx + knobR + 3
@@ -865,7 +849,7 @@ function drawSwitch(label, val, x, y, contentW, callback)
     love.graphics.setColor(0.12, 0.12, 0.12, 1)
     love.graphics.setLineWidth(1.5)
     love.graphics.circle("line", kx, y + sh/2, knobR)
-    -- Interaction
+
     local mx, my = love.mouse.getPosition()
     if mx > sx and mx < sx + sw and my > y and my < y + sh then
         if love.mouse.isDown(1) and not _switchLock then
@@ -874,4 +858,3 @@ function drawSwitch(label, val, x, y, contentW, callback)
         end
     end
 end
-

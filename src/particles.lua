@@ -11,7 +11,6 @@ function particles.new()
         return { x=x, y=y, r=0, maxR=maxR, life=dur, maxLife=dur, cr=cr, cg=cg, cb=cb }
     end
 
-    -- ── IMPACT — wall bounce ────────────────────────────────────────────────
     function self.spawnImpact(x, y, nx, ny, speed)
         local parts = {}
         local base  = math.atan2(ny, nx) + math.pi
@@ -34,7 +33,6 @@ function particles.new()
         })
     end
 
-    -- ── BREAK — wall shatters ───────────────────────────────────────────────
     function self.spawnBreak(x, y, w, h, color)
         local parts  = {}
         local cx, cy = x + w/2, y + h/2
@@ -50,7 +48,7 @@ function particles.new()
                 r=col[1], g=col[2], b=col[3], gravity=360, friction=0.87
             })
         end
-        -- Small bright sparks
+
         for i = 1, 8 do
             local a   = math.random() * math.pi * 2
             local spd = math.random(150, 380)
@@ -71,7 +69,6 @@ function particles.new()
         })
     end
 
-    -- ── DEATH — spike kill ──────────────────────────────────────────────────
     function self.spawnDeath(x, y)
         local parts = {}
 
@@ -84,7 +81,7 @@ function particles.new()
                 r=0.72, g=0.90, b=1.0, gravity=0, friction=0.86
             })
         end
-        -- A few rising wisps
+
         for i = 1, 6 do
             push(parts, {
                 x=x+(math.random()-0.5)*16, y=y,
@@ -103,7 +100,6 @@ function particles.new()
         })
     end
 
-    -- ── WARP — portal teleport ──────────────────────────────────────────────
     function self.spawnWarp(x, y, color)
         local parts = {}
         local c     = color or {0.05, 0.60, 1.0}
@@ -124,7 +120,6 @@ function particles.new()
         })
     end
 
-    -- ── ACTIVATE — button pressed ───────────────────────────────────────────
     function self.spawnActivate(x, y, w, h)
         local parts  = {}
         local cx, cy = x + w/2, y + h/2
@@ -145,7 +140,6 @@ function particles.new()
         })
     end
 
-    -- ── PALLET SMASH ────────────────────────────────────────────────────────
     function self.spawnPalletSmash(x, y, nx, ny, speed)
         local parts = {}
         local base  = math.atan2(ny, nx) + math.pi
@@ -161,7 +155,6 @@ function particles.new()
         table.insert(self.effects, { parts=parts, life=0.45 })
     end
 
-    -- ── TRAIL — glow while flying ────────────────────────────────────────────
     function self.spawnTrail(x, y, vx, vy)
         local speed = math.sqrt(vx*vx + vy*vy)
         if speed < 150 then return end
@@ -179,7 +172,6 @@ function particles.new()
         table.insert(self.effects, { parts=parts, life=0.13 })
     end
 
-    -- ── VICTORY ─────────────────────────────────────────────────────────────
     function self.spawnVictory(x, y)
         local parts  = {}
         local colors = {
@@ -196,7 +188,7 @@ function particles.new()
                 r=col[1], g=col[2], b=col[3], gravity=240, friction=0.91
             })
         end
-        -- Upward fountain
+
         for i = 1, 18 do
             local col = colors[math.random(#colors)]
             push(parts, {
@@ -216,7 +208,6 @@ function particles.new()
         })
     end
 
-    -- ── UPDATE ──────────────────────────────────────────────────────────────
     function self.update(dt)
         for i = #self.effects, 1, -1 do
             local e = self.effects[i]
@@ -243,12 +234,11 @@ function particles.new()
         end
     end
 
-    -- ── DRAW ────────────────────────────────────────────────────────────────
     function self.draw()
         love.graphics.setBlendMode("add")
 
         for _, e in ipairs(self.effects) do
-            -- Single clean ring per effect
+
             if e.rings then
                 for _, r in ipairs(e.rings) do
                     if r.life > 0 then
@@ -260,7 +250,6 @@ function particles.new()
                 end
             end
 
-            -- Particles: fade + shrink, single circle (no halo bloom)
             for _, p in ipairs(e.parts) do
                 if p.life > 0 then
                     local a  = math.max(0, p.life / p.maxLife)

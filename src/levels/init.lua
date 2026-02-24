@@ -1,4 +1,3 @@
--- Levels registry — loads each level from its own file.
 local levels = {}
 
 levels.data = {

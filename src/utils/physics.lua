@@ -3,11 +3,11 @@ local physics = {}
 function physics.circleVsAABB(cx, cy, r, rx, ry, rw, rh)
     local nearestX = math.max(rx, math.min(cx, rx + rw))
     local nearestY = math.max(ry, math.min(cy, ry + rh))
-    
+
     local dx = cx - nearestX
     local dy = cy - nearestY
     local distSq = dx*dx + dy*dy
-    
+
     if distSq < r*r then
         local dist = math.sqrt(distSq)
         local nx, ny
@@ -34,7 +34,7 @@ function physics.circleVsCircle(c1x, c1y, r1, c2x, c2y, r2)
     local dy = c2y - c1y
     local distSq = dx*dx + dy*dy
     local combinedRadius = r1 + r2
-    
+
     if distSq < combinedRadius * combinedRadius then
         local dist = math.sqrt(distSq)
         if dist < 0.00001 then
@@ -49,10 +49,10 @@ end
 function physics.lineVsAABB(x1, y1, x2, y2, rx, ry, rw, rh)
     local tmin = 0
     local tmax = 1
-    
+
     local dx = x2 - x1
     local dy = y2 - y1
-    
+
     if math.abs(dx) < 0.00001 then
         if x1 < rx or x1 > rx + rw then return false end
     else
@@ -63,7 +63,7 @@ function physics.lineVsAABB(x1, y1, x2, y2, rx, ry, rw, rh)
         tmax = math.min(tmax, t2)
         if tmin > tmax then return false end
     end
-    
+
     if math.abs(dy) < 0.00001 then
         if y1 < ry or y1 > ry + rh then return false end
     else
@@ -74,7 +74,7 @@ function physics.lineVsAABB(x1, y1, x2, y2, rx, ry, rw, rh)
         tmax = math.min(tmax, t2)
         if tmin > tmax then return false end
     end
-    
+
     return tmin < 1 and tmax > 0
 end
 

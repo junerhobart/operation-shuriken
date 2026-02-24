@@ -26,10 +26,10 @@ function player.new(x, y)
         vx = 0, vy = 0,
         radius = C.PLAYER_RADIUS,
         angle = 0,
-        
+
         dragging = false,
         pullX = 0, pullY = 0,
-        
+
         sprite = love.graphics.newImage("assets/images/sprite.png", {mipmaps = true}),
         trail = {},
         trailTimer = 0,
@@ -38,7 +38,7 @@ function player.new(x, y)
         dead = false,
         reachedExit = false
     }
-    
+
     self.spriteW = self.sprite:getWidth()
     self.spriteH = self.sprite:getHeight()
 
@@ -50,7 +50,6 @@ function player.new(x, y)
         if self.dead then return end
         portalCooldown = math.max(0, portalCooldown - dt)
 
-        -- Spawn trail glow orbs while flying fast
         if not self.dragging and ps then
             self._trailTimer = (self._trailTimer or 0) - dt
             if self._trailTimer <= 0 then
@@ -63,27 +62,26 @@ function player.new(x, y)
             self.vx, self.vy = 0, 0
         else
             local speed = self.getSpeed()
-            -- Optimize substeps for smoother performance on web
+
             local substeps = math.max(1, math.ceil(speed * dt / (self.radius * 0.5)))
             substeps = math.min(substeps, 12)
             local subDt = dt / substeps
-            
+
             for _ = 1, substeps do
                 self.x = self.x + self.vx * subDt
                 self.y = self.y + self.vy * subDt
-                
-                -- Reverse iterate to allow removal
+
                 for i = #world.walls, 1, -1 do
                     local w = world.walls[i]
                     local should_check = true
-                    
-                    if w.type == "door" and w.open then 
-                        should_check = false 
+
+                    if w.type == "door" and w.open then
+                        should_check = false
                     end
-                    
+
                     if should_check then
                         local hit, nx, ny, mtv = physics.circleVsAABB(self.x, self.y, self.radius, w.x, w.y, w.w, w.h)
-                        
+
                         if hit then
                             if w.type == "spikes" then
                                 self.dead = true
@@ -101,10 +99,10 @@ function player.new(x, y)
                                 local dot = self.vx * nx + self.vy * ny
                                 local impactSpeed = math.abs(dot)
                                 local transferMult = impactSpeed > 180 and 3.0 or 2.2
-                                
+
                                 w.vx = (w.vx or 0) - nx * impactSpeed * transferMult
                                 w.vy = (w.vy or 0) - ny * impactSpeed * transferMult
-                                
+
                                 self.x = self.x + nx * mtv
                                 self.y = self.y + ny * mtv
                                 self.vx = self.vx - dot * nx * 0.2
@@ -130,7 +128,7 @@ function player.new(x, y)
                                             self.y = other.y + other.h/2
                                             portalCooldown = 0.8
                                             bounceSound:stop(); bounceSound:play()
-                                            
+
                                             local hitTarget, tnx, tny, tmtv = physics.circleVsAABB(self.x, self.y, self.radius, other.x, other.y, other.w, other.h)
                                             if hitTarget then
                                                 self.x = self.x + tnx * tmtv
@@ -166,7 +164,7 @@ function player.new(x, y)
                 end
             end
         end
-        
+
         local effectiveDamping = C.PLAYER_DAMPING
         local speed = self.getSpeed()
         if speed > 0 then
@@ -176,19 +174,19 @@ function player.new(x, y)
                 self.vx, self.vy = 0, 0
             end
             self.angle = self.angle + speed * C.PLAYER_SPIN_FACTOR * dt
-            
+
             self.trailTimer = self.trailTimer + dt
             if self.trailTimer > 0.02 and speed > 100 then
                 table.insert(self.trail, 1, {x = self.x, y = self.y, angle = self.angle, alpha = 0.4})
                 self.trailTimer = 0
             end
         end
-        
+
         for i = #self.trail, 1, -1 do
             self.trail[i].alpha = self.trail[i].alpha - dt * 2.5
             if self.trail[i].alpha <= 0 then table.remove(self.trail, i) end
         end
-        
+
         if self.dragging then
             local dist = math.sqrt(self.pullX*self.pullX + self.pullY*self.pullY)
             local ratio = dist / C.PLAYER_MAX_PULL
@@ -200,10 +198,9 @@ function player.new(x, y)
 
     function self.draw(world, darkMode)
         if self.dead then return end
-        
+
         if darkMode then love.graphics.setShader(whiteShurikenShader) end
 
-        -- Trail: shrinking ghost sprites that fade blue-white
         for _, t in ipairs(self.trail) do
             local fade = math.max(0, t.alpha)
             local trailScale = (self.radius * 4.0) / self.spriteW * (0.5 + fade * 0.5)
@@ -217,14 +214,14 @@ function player.new(x, y)
             love.graphics.setLineWidth(2)
             love.graphics.setColor(1, 1, 1, 0.35)
             love.graphics.line(self.x, self.y, self.x + self.pullX, self.y + self.pullY)
-            
+
             if dist > 10 then
-                -- ── Simulation: EXACT same logic as self.update ──────────────────
+
                 local broken       = {}
                 local svx = -px * dist * C.PLAYER_LAUNCH_POWER
                 local svy = -py * dist * C.PLAYER_LAUNCH_POWER
                 local spx, spy     = self.x, self.y
-                -- points stores {x,y, broke=bool, teleport=bool}
+
                 local points       = {{x=spx, y=spy, broke=false, teleport=false}}
                 local palletPoints = {}
                 local playerAfterPalletPoints = {}
@@ -380,10 +377,8 @@ function player.new(x, y)
                     if stopSim then break end
                 end
 
-                -- ── Draw trajectory ───────────────────────────────────────────────
                 local nPts = math.max(1, #points - 1)
 
-                -- 1. Faint polyline through all recorded positions (skip teleport gaps)
                 love.graphics.setLineWidth(1.2)
                 for j = 1, #points - 1 do
                     local p1, p2 = points[j], points[j+1]
@@ -400,7 +395,6 @@ function player.new(x, y)
                     end
                 end
 
-                -- 2. Dots at every recorded position
                 for j = 1, #points do
                     local t   = (j - 1) / nPts
                     local dot = points[j]
@@ -420,7 +414,6 @@ function player.new(x, y)
                     love.graphics.circle("fill", dot.x, dot.y, 2.5)
                 end
 
-                -- 3. Player path after hitting pallet (green tint)
                 if #playerAfterPalletPoints > 1 then
                     love.graphics.setLineWidth(1.0)
                     love.graphics.setColor(0.10, 0.65, 0.35, 0.25)
@@ -441,7 +434,6 @@ function player.new(x, y)
                     end
                 end
 
-                -- 4. Endpoint marker
                 if #points >= 1 then
                     local ep = points[#points]
                     if hitExit then
@@ -459,7 +451,6 @@ function player.new(x, y)
                     end
                 end
 
-                -- 5. Spike hazard indicator (pulsing X)
                 if spikeHit then
                     local pulse = math.sin(love.timer.getTime() * 10) * 0.5 + 0.5
                     local wx, wy = spikeHit.x, spikeHit.y
@@ -472,18 +463,17 @@ function player.new(x, y)
                     love.graphics.line(wx+d, wy-d, wx-d, wy+d)
                 end
 
-                -- 6. Breakable wall "WILL SMASH" markers — large, clearly visible
                 local bc = C.COLOR_BREAKABLE
                 for _, bt in ipairs(breakableTargets) do
                     local pulse = math.sin(love.timer.getTime() * 7) * 0.5 + 0.5
-                    -- Filled burst
+
                     love.graphics.setColor(bc[1], bc[2], bc[3], 0.28 + pulse * 0.14)
                     love.graphics.circle("fill", bt.x, bt.y, 16)
-                    -- Bold ring
+
                     love.graphics.setColor(bc[1], bc[2], bc[3], 0.88)
                     love.graphics.setLineWidth(2)
                     love.graphics.circle("line", bt.x, bt.y, 16)
-                    -- Crack X inside
+
                     local d = 10
                     love.graphics.setColor(1, 1, 1, 0.70)
                     love.graphics.setLineWidth(2)
@@ -491,7 +481,6 @@ function player.new(x, y)
                     love.graphics.line(bt.x+d, bt.y-d, bt.x-d, bt.y+d)
                 end
 
-                -- 7. Pallet path preview (where crate goes)
                 if #palletPoints > 0 then
                     love.graphics.setColor(C.COLOR_PALLET[1], C.COLOR_PALLET[2], C.COLOR_PALLET[3], 0.65)
                     for i = 1, #palletPoints - 2, 2 do
@@ -500,7 +489,7 @@ function player.new(x, y)
                 end
             end
         end
-        
+
         love.graphics.push()
         love.graphics.translate(self.x, self.y)
         love.graphics.rotate(self.angle)
@@ -508,7 +497,7 @@ function player.new(x, y)
         local scale = (self.radius * 4.0) / self.spriteW
         love.graphics.draw(self.sprite, 0, 0, 0, scale, scale, self.spriteW/2, self.spriteH/2)
         love.graphics.pop()
-        
+
         if darkMode then love.graphics.setShader() end
     end
 
@@ -532,7 +521,7 @@ function player.new(x, y)
             self.dragging = false
             local px, py = utils.normalize(self.pullX, self.pullY)
             self.vx, self.vy = -px * dist * C.PLAYER_LAUNCH_POWER, -py * dist * C.PLAYER_LAUNCH_POWER
-            return dist / C.PLAYER_MAX_PULL 
+            return dist / C.PLAYER_MAX_PULL
         end
         return 0
     end
