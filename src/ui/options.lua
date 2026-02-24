@@ -62,13 +62,23 @@ function drawOptions()
         drawSlider("Music Volume", settings.musicVol, 0, 1.0, contentX, contentY,        contentW, function(v) settings.musicVol = v end)
         drawSlider("SFX Volume",   settings.sfxVol,   0, 1.0, contentX, contentY + rowH, contentW, function(v) settings.sfxVol = v end)
     elseif optionsTab == "Display" then
-        drawSwitch("Fullscreen", settings.fullscreen, contentX, contentY - 20, contentW,
-            function(v) settings.fullscreen = v; if love.system.getOS() ~= "Web" then love.window.setFullscreen(v) end end)
-        drawSwitch("VSync", settings.vsync, contentX, contentY - 20 + switchH, contentW,
-            function(v) settings.vsync = v; love.window.setVSync(v and 1 or 0) end)
         local isWeb = love.system.getOS() == "Web"
+        local row = 0
         if not isWeb then
-            drawSelector("Resolution", resolutions, resIndex, contentX, contentY - 20 + switchH * 2 + 12, contentW,
+            drawSwitch("Fullscreen", settings.fullscreen, contentX, contentY - 20 + switchH * row, contentW,
+                function(v) settings.fullscreen = v; love.window.setFullscreen(v) end)
+            row = row + 1
+        end
+        drawSwitch("VSync", settings.vsync, contentX, contentY - 20 + switchH * row, contentW,
+            function(v)
+                settings.vsync = v
+                local w2, h2, flags = love.window.getMode()
+                flags.vsync = v and 1 or 0
+                love.window.setMode(w2, h2, flags)
+            end)
+        row = row + 1
+        if not isWeb then
+            drawSelector("Resolution", resolutions, resIndex, contentX, contentY - 20 + switchH * row + 12, contentW,
                 function(idx)
                     resIndex = idx
                     local rw, rh = resolutions[idx]:match("(%d+)x(%d+)")
