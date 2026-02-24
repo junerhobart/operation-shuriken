@@ -18,7 +18,7 @@
     #start{
       position:fixed;inset:0;display:none;
       align-items:center;justify-content:center;
-      background:rgba(10,10,10,0.88);
+      background:#111;
       cursor:pointer;-webkit-tap-highlight-color:transparent;
       touch-action:manipulation;z-index:10;
       transition:opacity .3s;
@@ -38,7 +38,6 @@
   <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
   <script>
     // ── Audio unlock ─────────────────────────────────────────────────────────
-    // Intercept AudioContext creation so we hold a reference to love.js's instance.
     (function() {
       var Orig = window.AudioContext || window.webkitAudioContext;
       if (!Orig) return;
@@ -69,9 +68,9 @@
         } catch(e) {}
       };
 
-      // Keep re-poking on every gesture in case iOS re-suspends
-      document.addEventListener('touchstart', function() { window._unlockAllCtxs(); }, {passive:true});
-      document.addEventListener('mousedown',  function() { window._unlockAllCtxs(); }, {passive:true});
+      // Re-poke on every gesture in case iOS re-suspends
+      document.addEventListener('touchstart', function(){ window._unlockAllCtxs(); }, {passive:true});
+      document.addEventListener('mousedown',  function(){ window._unlockAllCtxs(); }, {passive:true});
     })();
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -89,8 +88,11 @@
       })(),
       setStatus:function(text){
         if(!text){
-          // Game finished loading — show the start overlay
-          document.getElementById("canvas").style.visibility="visible";
+          // Pause the main loop so nothing animates behind the overlay
+          setTimeout(function(){
+            try { Module._emscripten_pause_main_loop(); } catch(e) {}
+          }, 50);
+
           var ld=document.getElementById("loading");
           if(ld){ld.style.opacity="0";setTimeout(function(){ld.remove();},500);}
 
@@ -101,16 +103,23 @@
 
           function dismiss(e) {
             if (e) e.preventDefault();
+            // Unlock audio first
             window._unlockAllCtxs();
+            // Resume the game loop
+            try { Module._emscripten_resume_main_loop(); } catch(e2) {}
+            // Show canvas and fade overlay
+            document.getElementById("canvas").style.visibility = "visible";
             overlay.style.opacity = "0";
             setTimeout(function(){ overlay.remove(); }, 320);
-            overlay.removeEventListener("mousedown", dismiss);
+            overlay.removeEventListener("mousedown",  dismiss);
             overlay.removeEventListener("touchstart", dismiss);
-            overlay.removeEventListener("keydown", dismiss);
+            document.removeEventListener("keydown",   onKey);
           }
+          function onKey() { dismiss(null); }
+
           overlay.addEventListener("mousedown",  dismiss, {passive:false});
           overlay.addEventListener("touchstart", dismiss, {passive:false});
-          document.addEventListener("keydown",   dismiss, {once:true});
+          document.addEventListener("keydown",   onKey,   {once:true});
         } else {
           var ld=document.getElementById("loading");
           if(ld) ld.textContent=text.replace(/\(.*?\)/g,"").trim()||"LOADING…";
