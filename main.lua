@@ -52,6 +52,10 @@ lsDrag = {
     lastT    = 0,
 }
 
+activeTouches = {}
+pinchDist0    = nil
+pinchZoom0    = nil
+
 function saveProgress()
     local lines = {}
     for k, v in pairs(completedLevels) do
@@ -463,17 +467,49 @@ function love.resize(w, h)
     end
 end
 
+local function touchCount()
+    local n = 0; for _ in pairs(activeTouches) do n = n + 1 end; return n
+end
+local function touchPinchDist()
+    local ids = {}
+    for k in pairs(activeTouches) do ids[#ids+1] = k end
+    if #ids < 2 then return nil end
+    local a, b = activeTouches[ids[1]], activeTouches[ids[2]]
+    return math.sqrt((a.x-b.x)^2 + (a.y-b.y)^2)
+end
+
 function love.touchpressed(id, x, y, dx, dy, pressure)
     unlockAudio()
-    love.mousepressed(x, y, 1)
+    activeTouches[id] = {x=x, y=y}
+    local n = touchCount()
+    if n == 2 then
+        pinchDist0 = touchPinchDist()
+        pinchZoom0 = camZoom
+    elseif n == 1 then
+        love.mousepressed(x, y, 1)
+    end
 end
 
 function love.touchmoved(id, x, y, dx, dy, pressure)
-
+    activeTouches[id] = {x=x, y=y}
+    local n = touchCount()
+    if n == 2 and pinchDist0 and pinchZoom0 then
+        local dist = touchPinchDist()
+        if dist and dist > 0 then
+            camZoom = math.max(0.35, math.min(2.5, pinchZoom0 * (dist / pinchDist0)))
+        end
+    elseif n == 1 then
+        love.mousemoved(x, y, dx, dy)
+    end
 end
 
 function love.touchreleased(id, x, y, dx, dy, pressure)
-    love.mousereleased(x, y, 1)
+    activeTouches[id] = nil
+    pinchDist0 = nil
+    pinchZoom0 = nil
+    if touchCount() == 0 then
+        love.mousereleased(x, y, 1)
+    end
 end
 
 function love.filedropped(file)

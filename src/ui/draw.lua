@@ -398,22 +398,27 @@ function drawStory()
     local charCount = math.floor(storyTime * 40)
     local displayText = utf8sub(text, charCount)
 
+    local portrait = h > w
+    local cy = h * 0.5
+    local unit = portrait and h * 0.065 or h * 0.075
+
     love.graphics.setFont(fonts.main)
     love.graphics.setColor(0.55, 0.55, 0.55, fadeIn)
-    love.graphics.printf("ACT " .. (lvl.act or "I") .. "  LEVEL " .. currentLevel, 0, h/2 - 120 * scale, w, "center")
+    love.graphics.printf("ACT " .. (lvl.act or "I") .. "  ·  LEVEL " .. currentLevel, 0, cy - unit * 2.6, w, "center")
 
     love.graphics.setFont(fonts.options)
     love.graphics.setColor(0.10, 0.10, 0.10, fadeIn)
-    love.graphics.printf(lvl.name, 0, h/2 - 90 * scale, w, "center")
+    love.graphics.printf(lvl.name, 0, cy - unit * 1.8, w, "center")
 
-    local ruleW = 280 * scale
+    local ruleW = math.min(280 * scale, w * 0.72)
     love.graphics.setColor(0.55, 0.55, 0.55, fadeIn * 0.6)
     love.graphics.setLineWidth(1)
-    love.graphics.line(w/2 - ruleW/2, h/2 - 50 * scale, w/2 + ruleW/2, h/2 - 50 * scale)
+    love.graphics.line(w/2 - ruleW/2, cy - unit * 0.8, w/2 + ruleW/2, cy - unit * 0.8)
 
+    local textW = math.min(w * 0.86, 480 * scale)
     love.graphics.setFont(fonts.main)
     love.graphics.setColor(0.25, 0.25, 0.25, fadeIn)
-    love.graphics.printf(displayText, w/2 - 200 * scale, h/2 - 30 * scale, 400 * scale, "center")
+    love.graphics.printf(displayText, w/2 - textW/2, cy - unit * 0.3, textW, "center")
 
     if charCount >= utf8len(text) then
         local blink = math.sin(love.timer.getTime() * 2.5) * 0.25 + 0.75
@@ -421,7 +426,7 @@ function drawStory()
         local hint = isMobile and "Tap to continue" or "Tap or press Space to continue"
         love.graphics.setFont(fonts.main)
         love.graphics.setColor(0.55, 0.55, 0.55, blink * fadeIn)
-        love.graphics.printf(hint, 0, h/2 + 80 * scale, w, "center")
+        love.graphics.printf(hint, 0, cy + unit * 2.0, w, "center")
     end
 end
 
