@@ -37,6 +37,7 @@ settings = {
 menuTime              = 0
 optionsTime           = 0
 audioUnlocked         = false
+currentMusicTrack     = nil
 isDevMode             = false
 _switchLock           = false
 
@@ -148,6 +149,7 @@ function commitPendingSnap()
 end
 
 function playMusic(track)
+    currentMusicTrack = track
     for _, v in pairs(music) do pcall(function() v:stop() end) end
     if music[track] then
         pcall(function()
@@ -166,6 +168,10 @@ function unlockAudio()
             if ok2 and src then pcall(function() src:play() end) end
         end
         audioUnlocked = true
+        -- Restart music — it played into a suspended context on load and went silent
+        if currentMusicTrack then
+            playMusic(currentMusicTrack)
+        end
     end
 end
 
