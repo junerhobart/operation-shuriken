@@ -160,12 +160,22 @@ function levelSelectPanelGeom(sw, sh)
     return 0, topPad, sw, sh - topPad - botPad, nodeRadius, 1, rowH, 0, 0
 end
 
-function levelSelectNodePositions(panelX, panelY, panelH, nodeRadius, _npr, rowH, _spX, _hPad, scroll)
+function levelSelectNodePositions(panelX, panelY, panelH, nodeRadius, _npr, rowH, _spX, _hPad, scroll, cx)
     local sw, sh = love.graphics.getDimensions()
-    local portrait = sh > sw
-
-    local cx   = portrait and sw / 2 or sw * 0.38
-    local sway = math.min(sw * 0.07, 40)
+    if not cx then
+        love.graphics.setFont(fonts.main)
+        local maxNameW = 0
+        for i = 1, levelsModule.totalLevels do
+            local lvl = levelsModule.get(i)
+            if lvl and lvl.name then
+                local nw = fonts.main:getWidth(lvl.name)
+                if nw > maxNameW then maxNameW = nw end
+            end
+        end
+        local blockW = nodeRadius * 2 + 14 + maxNameW
+        cx = math.floor(sw / 2 - blockW / 2 + nodeRadius)
+    end
+    local sway  = math.min(sw * 0.05, 28)
     local baseY = panelY + panelH - nodeRadius - 16 + scroll
 
     local positions = {}
@@ -214,7 +224,20 @@ function drawLevelSelect()
     scroll = math.max(0, math.min(scroll, maxScroll))
     levelSelectScroll = scroll
 
-    local positions = levelSelectNodePositions(panelX, panelY, panelH, nodeRadius, 1, rowH, 0, 0, scroll)
+    -- Compute cx so the whole [circle + gap + longest name] block is centered on screen
+    love.graphics.setFont(fonts.main)
+    local maxNameW = 0
+    for i = 1, levelsModule.totalLevels do
+        local lvl = levelsModule.get(i)
+        if lvl and lvl.name then
+            local nw = fonts.main:getWidth(lvl.name)
+            if nw > maxNameW then maxNameW = nw end
+        end
+    end
+    local blockW = nodeRadius * 2 + 14 + maxNameW
+    local cx     = math.floor(sw / 2 - blockW / 2 + nodeRadius)
+
+    local positions = levelSelectNodePositions(panelX, panelY, panelH, nodeRadius, 1, rowH, 0, 0, scroll, cx)
 
     love.graphics.setColor(0.97, 0.96, 0.93, math.min(t * 6, 0.92))
     love.graphics.rectangle("fill", 0, 0, sw, sh)
@@ -228,10 +251,10 @@ function drawLevelSelect()
     love.graphics.printf("Select Mission", 0, titleY + titleOff, sw, "center")
 
     local ruleY = titleY + fonts.large:getHeight() + 10 + titleOff
-    local ruleW = math.min(sw * 0.45, 360 * scale)
+    local ruleW = math.min(320 * scale, sw * 0.82)
     love.graphics.setColor(0.55, 0.55, 0.55, pageA * 0.8)
     love.graphics.setLineWidth(1.5)
-    love.graphics.line(sw/2 - ruleW/2, ruleY, sw/2 + ruleW/2, ruleY)
+    love.graphics.line(sw / 2 - ruleW / 2, ruleY, sw / 2 + ruleW / 2, ruleY)
 
     local scissorTop = panelY
     local footerH    = portrait and sh * 0.07 or sh * 0.065
@@ -254,8 +277,6 @@ function drawLevelSelect()
     end
 
     local mx, my = love.mouse.getPosition()
-
-    local nameColX = portrait and 0 or (sw * 0.38 + nodeRadius * 1.4 + 12)
 
     love.graphics.setFont(fonts.main)
     local fh = fonts.main:getHeight()
@@ -311,7 +332,7 @@ function drawLevelSelect()
             end
             love.graphics.printf(tostring(i), nx - 50, ny - fh/2 + 1, 100, "center")
 
-            local nameX = portrait and (nx + r + 14) or nameColX
+            local nameX = nx + r + 14
             love.graphics.setColor(0.28, 0.28, 0.28, (hov and 1 or 0.85) * bounce)
             love.graphics.print(lvl and lvl.name or "", nameX, ny - fh/2)
 

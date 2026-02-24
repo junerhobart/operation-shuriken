@@ -141,20 +141,23 @@ function commitPendingSnap()
 end
 
 function playMusic(track)
-    for k, v in pairs(music) do v:stop() end
+    for _, v in pairs(music) do pcall(function() v:stop() end) end
     if music[track] then
-        music[track]:setLooping(true)
-        music[track]:setVolume(settings.musicVol)
-        music[track]:play()
+        pcall(function()
+            music[track]:setLooping(true)
+            music[track]:setVolume(settings.musicVol)
+            music[track]:play()
+        end)
     end
 end
 
 function unlockAudio()
     if not audioUnlocked then
-
-        local soundData = love.sound.newSoundData(512, 44100, 16, 1)
-        local silentSource = love.audio.newSource(soundData)
-        silentSource:play()
+        local ok, soundData = pcall(love.sound.newSoundData, 512, 44100, 16, 1)
+        if ok and soundData then
+            local ok2, src = pcall(love.audio.newSource, soundData, "static")
+            if ok2 and src then pcall(function() src:play() end) end
+        end
         audioUnlocked = true
     end
 end
@@ -387,7 +390,8 @@ end
 
 function love.visible(v)
     if not v then
-        love.audio.stop()
+        for _, s in pairs(sounds) do pcall(function() s:stop() end) end
+        for _, s in pairs(music)  do pcall(function() s:stop() end) end
     end
 end
 
