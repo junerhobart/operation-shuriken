@@ -141,6 +141,7 @@ function drawSwitch(label, val, x, y, contentW, callback)
         if love.mouse.isDown(1) and not _switchLock then
             callback(not val); _switchLock = true
             sounds.click:stop(); sounds.click:play()
+            saveSettings()
         end
     end
 end
@@ -180,10 +181,12 @@ function drawSelector(label, options, currentIdx, x, y, contentW, callback)
             _switchLock = true
             sounds.click:stop(); sounds.click:play()
             callback(currentIdx - 1)
+            saveSettings()
         elseif rightHov and currentIdx < #options then
             _switchLock = true
             sounds.click:stop(); sounds.click:play()
             callback(currentIdx + 1)
+            saveSettings()
         end
     end
 end

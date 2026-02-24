@@ -179,7 +179,8 @@ function love.mousereleased(x, y, button)
         editorMouseReleased(x, y, button); return
     end
 
-    if state == "menu" or state == "options" then return end
+    if state == "options" then saveSettings(); return end
+    if state == "menu" then return end
     pendingDragX = nil; pendingDragY = nil
     if not victory and not deathPending and button == 1 then
         local r = player.releaseDrag()

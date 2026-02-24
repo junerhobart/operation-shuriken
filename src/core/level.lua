@@ -16,6 +16,34 @@ function loadProgress()
     end
 end
 
+function saveSettings()
+    local lines = {}
+    for k, v in pairs(settings) do
+        local vStr
+        if type(v) == "boolean" then vStr = v and "true" or "false"
+        else vStr = tostring(v) end
+        table.insert(lines, k .. "=" .. vStr)
+    end
+    love.filesystem.write("settings.txt", table.concat(lines, "\n"))
+end
+
+function loadSettings()
+    if love.filesystem.getInfo("settings.txt") then
+        local data = love.filesystem.read("settings.txt")
+        for line in data:gmatch("[^\n]+") do
+            local k, v = line:match("^(.-)=(.+)$")
+            if k and v and settings[k] ~= nil then
+                if v == "true" then settings[k] = true
+                elseif v == "false" then settings[k] = false
+                else
+                    local num = tonumber(v)
+                    if num then settings[k] = num end
+                end
+            end
+        end
+    end
+end
+
 function resetGame(levelData)
     world = worldModule.new(levelData)
     local lvl = levelsModule.get(currentLevel)

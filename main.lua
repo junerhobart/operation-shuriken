@@ -83,6 +83,8 @@ function love.load(arg)
     }
 
     loadProgress()
+    loadSettings()
+    updateColors()
     resetGame()
     state = "menu"
     playMusic("menu")
