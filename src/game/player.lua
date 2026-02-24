@@ -21,6 +21,7 @@ local whiteShurikenShader = love.graphics.newShader([[
 local portalCooldown = 0
 
 function player.new(x, y)
+    portalCooldown = 0
     local self = {
         x = x, y = y,
         vx = 0, vy = 0,

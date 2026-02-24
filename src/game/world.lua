@@ -277,63 +277,57 @@ function world.new(levelData)
         for _, w in ipairs(self.walls) do
             if w.type == "spikes" then
                 local col    = C.COLOR_SPIKES
-                local facing = w.facing
+                local facing = w.facing or "up"
 
                 if w.w <= w.h then
+                    -- Vertical strip — triangles point left or right
+                    local tipX  = facing == "left"  and w.x          or (w.x + w.w)
+                    local baseX = facing == "left"  and (w.x + w.w)  or w.x
+                    local n     = math.max(1, math.floor(w.h / 16))
+                    local pitch = w.h / n
+                    local half  = pitch * 0.44
 
-                    local cx    = w.x + w.w / 2
-                    local pitch = math.max(10, math.min(18, w.h / math.max(2, math.floor(w.h / 14))))
-                    local n     = math.floor(w.h / pitch)
-                    local depth = w.w * 0.55 + 5
-
-                    love.graphics.setColor(col[1], col[2], col[3], 0.35)
-                    love.graphics.setLineWidth(1)
-                    love.graphics.line(cx, w.y, cx, w.y + w.h)
+                    -- thin base bar
+                    love.graphics.setColor(col[1], col[2], col[3], 0.55)
+                    if facing == "left" then
+                        love.graphics.rectangle("fill", w.x + w.w - 2, w.y, 2, w.h)
+                    else
+                        love.graphics.rectangle("fill", w.x, w.y, 2, w.h)
+                    end
 
                     love.graphics.setColor(col)
                     for i = 0, n - 1 do
-                        local ty   = w.y + (i + 0.5) * pitch
-                        local half = pitch * 0.43
-                        if facing ~= "right" then
-                            love.graphics.polygon("fill", cx, ty - half,  w.x - depth, ty,  cx, ty + half)
-                        end
-                        if facing ~= "left" then
-                            love.graphics.polygon("fill", cx, ty - half,  w.x + w.w + depth, ty,  cx, ty + half)
-                        end
+                        local ty = w.y + (i + 0.5) * pitch
+                        love.graphics.polygon("fill",
+                            baseX, ty - half,
+                            tipX,  ty,
+                            baseX, ty + half)
                     end
                 else
+                    -- Horizontal strip — triangles point up or down
+                    local tipY  = facing == "up"   and w.y          or (w.y + w.h)
+                    local baseY = facing == "up"   and (w.y + w.h)  or w.y
+                    local n     = math.max(1, math.floor(w.w / 16))
+                    local pitch = w.w / n
+                    local half  = pitch * 0.44
 
-                    local pitch = math.max(10, math.min(18, w.w / math.max(2, math.floor(w.w / 14))))
-                    local n     = math.floor(w.w / pitch)
-
-                    if facing == "down" then
-
-                        local baseY = w.y + w.h * 0.40
-                        love.graphics.setColor(col[1], col[2], col[3], 0.45)
-                        love.graphics.rectangle("fill", w.x, w.y, w.w, w.h - (w.y + w.h - baseY - (w.y + w.h * 0.40 - w.y)))
-                        love.graphics.setColor(col)
-                        for i = 0, n - 1 do
-                            local tx   = w.x + (i + 0.5) * pitch
-                            local half = pitch * 0.43
-                            love.graphics.polygon("fill", tx - half, baseY,  tx, w.y + w.h,  tx + half, baseY)
-                        end
+                    -- thin base bar
+                    love.graphics.setColor(col[1], col[2], col[3], 0.55)
+                    if facing == "up" then
+                        love.graphics.rectangle("fill", w.x, w.y + w.h - 2, w.w, 2)
                     else
+                        love.graphics.rectangle("fill", w.x, w.y, w.w, 2)
+                    end
 
-                        local baseY = w.y + w.h * 0.60
-                        love.graphics.setColor(col[1], col[2], col[3], 0.45)
-                        love.graphics.rectangle("fill", w.x, baseY, w.w, w.h - (baseY - w.y))
-                        love.graphics.setColor(col)
-                        for i = 0, n - 1 do
-                            local tx   = w.x + (i + 0.5) * pitch
-                            local half = pitch * 0.43
-                            love.graphics.polygon("fill", tx - half, baseY,  tx, w.y,  tx + half, baseY)
-                        end
+                    love.graphics.setColor(col)
+                    for i = 0, n - 1 do
+                        local tx = w.x + (i + 0.5) * pitch
+                        love.graphics.polygon("fill",
+                            tx - half, baseY,
+                            tx,        tipY,
+                            tx + half, baseY)
                     end
                 end
-
-                love.graphics.setColor(col[1], col[2], col[3], 0.50)
-                love.graphics.setLineWidth(1)
-                love.graphics.rectangle("line", w.x, w.y, w.w, w.h)
             end
         end
 
