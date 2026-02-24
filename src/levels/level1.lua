@@ -1,28 +1,4 @@
 -- Level 1: "First Launch"
--- Difficulty: 1/10 | Rooms: 6 (3x2 serpentine)
--- Objects: 1 breakable wall
---
--- Layout (grid 3x2):
---   (0,0)S --> (1,0) --> (2,0)
---                         | breakable
---   (0,1)E <-- (1,1) <-- (2,1)
---
--- Solution:
---   1. Launch right from spawn through passage into room (1,0)
---   2. Navigate past pillar, launch right through passage into (2,0)
---   3. Aim downward at breakable wall (brown) with full power, break through into (2,1)
---   4. Launch left through passage into (1,1)
---   5. Navigate past pillar, launch left through passage into (0,1)
---   6. Reach exit
---
--- Reasoning moments:
---   1. Identifying the breakable wall and aiming with enough speed to smash it
---   2. Navigating the U-turn path through correct passages
---
--- Softlock check:
---   - No doors, buttons, pallets, or portals; no state to get stuck in
---   - Breakable wall only needs to be broken once; all rooms remain accessible
---   - All passages are bidirectional
 
 return {
     name = "First Launch",

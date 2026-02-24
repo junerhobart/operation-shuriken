@@ -1,80 +1,4 @@
 -- Level 12: "Final Exam"
--- Difficulty: 10/10 | Rooms: 13 (4x4 grid, 13 active, unused: (0,3), (1,3), (2,3))
--- Objects: 4 breakable walls, 1 portal pair, 3 pallets, 3 buttons, 3 doors, spikes
---
--- Layout (4 cols x 4 rows):
---   (0,0)S --> (1,0) -bw1-> (2,0) --> (3,0)[portalA]
---     |                       |          |
---   (0,1)[spk] --> (1,1) -G1-> (2,1) --> (3,1)[K2,B2->G2]
---     | bw2                     |
---   (0,2)[portalB] --> (1,2) -bw3-> (2,2)[K3,B3->G3] --> (3,2)[spk]
---                        | G3
---                      (1,3 via G3? no, use (3,3))
---
--- Revised 13-room layout (4x4 minus 3):
---   (0,0)S --> (1,0) -bw1-> (2,0) --> (3,0)[portalA]
---     |                       |          |
---   (0,1)[spk] -G1-> (1,1) --> (2,1)[K1,B1->G1] --> (3,1)[K2,B2->G2]
---     | bw2                                           |
---   (0,2)[portalB] --> (1,2) -bw3-> (2,2) -G2-> (3,2)[K3,B3->G3]
---                                                  | G3
---                                               (3,3)E
---
--- Solution (non-obvious order):
---   1. (0,0) right to (1,0), break bw1 to (2,0), right to (3,0)
---   2. Portal to (0,2) [lower left]
---   3. (0,2) right to (1,2), break bw3 to (2,2): STUCK — G2 blocks path to (3,2)
---   4. Need G2 open. Portal back to (3,0)
---   5. (3,0) down to (3,1): push K2 onto B2 -> G2 opens
---   6. Portal to (0,2) -> (1,2) -> bw3 -> (2,2) -> G2 -> (3,2)
---   7. Push K3 onto B3 -> G3 opens -> but G3 leads to (3,3)E
---   8. BUT (3,3) is the exit! Go down through G3 to (3,3) -> DONE?
---   9. Wait — bw3 was already broken. But we never opened G1!
---      G1 was a red herring? No — let me revise.
---
--- REVISED: G3 blocks the exit. G3 requires K3 which is behind G1.
---
---   (0,0)S --> (1,0) -bw1-> (2,0) --> (3,0)[portalA]
---     |                       |          |
---   (0,1)[spk] -G1-> (1,1)[K3] (2,1)[K1,B1->G1] (3,1)[K2,B2->G2]
---     | bw2                              |
---   (0,2)[portB] (1,2) -bw3-> (2,2)[B3->G3] -G2-> (3,2)
---     |bw4                                          |G3
---   (0,3)E                                        (3,3)
---
--- Hmm, too complex. Let me simplify to a clear 13-room layout.
---
--- FINAL Layout (4x4, 13 rooms, unused: (0,3)(1,3)(2,3)):
---   (0,0)S --> (1,0) -bw1-> (2,0) --> (3,0)[portalA]
---     |                                  |
---   (0,1)[spk] --> (1,1) -bw2-> (2,1)[K1,B1->G1] --> (3,1)
---     |                                               |
---   (0,2)[portB] --> (1,2)[K2,B2->G2] -G1-> (2,2) --> (3,2)[K3,B3->G3,spk]
---                                                        |G3
---                                                      (3,3)E
---
--- Solution:
---   1. Explore upper: (0,0)→(1,0)→bw1→(2,0)→(3,0): find portal_a
---   2. Portal to (0,2)→(1,2): push K2 onto B2 → G2 opens (tracks to where?)
---      G2 opens passage somewhere we need. Let me assign targets carefully.
---
--- CLEAN FINAL DESIGN:
---   G1: controlled by B1 in (2,1), blocks passage (1,2)→(2,2)
---   G2: controlled by B2 in (1,2), blocks passage (2,2)→(3,2)
---   G3: controlled by B3 in (3,2), blocks passage (3,2)→(3,3) exit
---
---   Order: Must open G1 first (to reach G2 area), then G2 (to reach G3 area), then G3 (exit)
---
---   K1/B1 in (2,1): accessible via upper island route
---   K2/B2 in (1,2): accessible via portal to lower island
---   K3/B3 in (3,2): accessible only after G1 and G2 are open
---
--- Solution:
---   1. (0,0)→(1,0)→bw1→(2,0)→(3,0)→(3,1)→(2,1): push K1→B1 → G1 opens
---   2. (3,0) portal_a → (0,2) portal_b
---   3. (0,2)→(1,2): push K2→B2 → G2 opens
---   4. (1,2) → G1 → (2,2) → G2 → (3,2): push K3→B3 → G3 opens
---   5. (3,2) → G3 → (3,3) → exit
 
 return {
     name = "Final Exam",
@@ -167,8 +91,8 @@ return {
         {x=1240, y=740, w=100, h=100, type="button", target="door_3"},
 
         -- spikes
-        {x=30, y=400, w=20, h=120, type="spikes", facing="right"},
-        {x=1320, y=700, w=20, h=160, type="spikes", facing="left"},
+        {x=20, y=400, w=20, h=120, type="spikes", facing="right"},
+        {x=1340, y=700, w=20, h=160, type="spikes", facing="left"},
 
         -- breakable wall bw4 between (0,1) and (0,2) already handled above
 

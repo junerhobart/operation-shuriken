@@ -1,56 +1,4 @@
 -- Level 11: "Rift Walker"
--- Difficulty: 9/10 | Rooms: 11 (4x3 grid, 11 active, unused: (0,2))
--- Objects: 3 breakable walls, 1 portal pair, 2 pallets, 2 buttons, 2 doors, spikes
---
--- Layout:
---   (0,0)S -bw1-> (1,0) --> (2,0) --> (3,0)
---     |                        |         |
---   (0,1)[spk] --> (1,1) --> (2,1)[portA] (3,1)[K2,B2->G2]
---                    |G1                    |
---                  (1,2)[portB,K1,B1->G1] -bw2-> (2,2) -bw3-> (3,2)E[G2 blocks]
---
--- The portal connects the middle of the level to the lower-right area.
--- G1 in lower area blocks path to K1; G2 blocks exit.
---
--- Solution:
---   1. (0,0) break bw1 to (1,0), right to (2,0), down to (2,1)
---   2. Enter portal_a in (2,1) -> teleport to portal_b in (1,2)
---   3. Push K1 onto B1 in (1,2) -> G1 opens [between (1,1) and (1,2)]
---   4. Portal back: (1,2) portal_b -> (2,1) portal_a
---   5. Left to (1,1), right to (2,0)... no. Left to (1,1), down through G1 to (1,2)
---      Wait, player is in (2,1). Go left to (1,1), down through G1 to (1,2)?
---      Actually G1 was between (1,1) and (1,2). Now it's open.
---   5. (2,1) -> (1,1) -> G1 -> already in (1,2). But player portalled FROM (1,2).
---      Let me revise: portal back to (2,1), then navigate to (3,0) -> (3,1).
---   5. (2,1) -> (2,0) -> (3,0) -> (3,1): push K2 onto B2 -> G2 opens
---   6. Portal to (1,2) -> bw2 -> (2,2) -> bw3 -> (3,2)E through G2
---
--- REVISED Solution:
---   1. (0,0) break bw1 to (1,0), right to (2,0), right to (3,0), down to (3,1)
---   2. Push K2 onto B2 in (3,1) -> G2 opens... but exit is behind bw3 and G2.
---      Wait, need to reach (3,2) which is below (3,1) — needs G2 in gap.
---   Actually let me simplify connections. G2 blocks the very last passage.
---
--- FINAL path:
---   1. (0,0) bw1 right to (1,0), right to (2,0), down to (2,1)
---   2. Portal_a in (2,1) -> portal_b in (1,2)
---   3. Push K1 onto B1 in (1,2) -> G1 opens between (1,1) and (1,2)
---   4. Portal_b -> portal_a in (2,1), go up to (2,0), right to (3,0), down to (3,1)
---   5. Push K2 onto B2 in (3,1) -> G2 opens
---   6. Portal to (1,2) again, break bw2 right to (2,2), break bw3 right to (3,2)
---   7. G2 open -> enter (3,2) exit
---
--- Reasoning moments:
---   1. Using portal to access (1,2) before G1 is open
---   2. Solving K1/B1 puzzle while accessed via portal
---   3. Backtracking via portal to reach K2/B2 in (3,1)
---   4. Final portal trip to lower-right for exit
---
--- Softlock check:
---   - Portal always bidirectional
---   - K1 in (1,2) re-pushable from portal or (1,1) via G1
---   - K2 in (3,1) re-pushable from (3,0)
---   - bw2/bw3 are forward-only but on the exit path
 
 return {
     name = "Rift Walker",
@@ -117,8 +65,8 @@ return {
         {x=1260, y=580, w=100, h=80, type="normal"},
 
         -- spikes in (0,1)
-        {x=30, y=400, w=20, h=120, type="spikes", facing="right"},
-        {x=280, y=540, w=40, h=20, type="spikes", facing="up"},
+        {x=20, y=400, w=20, h=120, type="spikes", facing="right"},
+        {x=280, y=560, w=40, h=20, type="spikes", facing="up"},
 
         -- portal pair
         {x=820, y=420, w=60, h=60, type="portal_a"},

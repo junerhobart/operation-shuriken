@@ -1,21 +1,4 @@
 -- Level 7: "The Long Way Round"
--- Difficulty: 7/10 | Rooms: 9 (3x3 wide grid)
--- Objects: 2 breakable walls, 2 pallets, 2 buttons, 2 doors, 2 spike strips
---
--- Layout (3x3 wide):
---   (0,0)S --> (1,0) -bw1-> (2,0)
---                              |
---   (0,1) <-G1- (1,1) <--- (2,1) [K1, B1 -> G1, spikes]
---     | bw2
---   (0,2) --> (1,2) [K2, B2 -> G2, spikes] -G2-> (2,2)E
---
--- Solution:
---   1. (0,0) right to (1,0), break bw1 right into (2,0)
---   2. Down to (2,1), push K1 onto B1 — G1 opens
---   3. Left to (1,1), left through G1 into (0,1)
---   4. Break bw2 down into (0,2), right to (1,2)
---   5. Push K2 onto B2 in (1,2) — G2 opens
---   6. Right through G2 into (2,2) — reach exit
 
 return {
     name = "The Long Way Round",

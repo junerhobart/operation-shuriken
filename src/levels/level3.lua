@@ -1,32 +1,4 @@
 -- Level 3: "Under Pressure"
--- Difficulty: 3/10 | Rooms: 7 (3x3 grid, 7 active)
--- Objects: 1 breakable wall, 1 pallet (K1), 1 button (B1), 1 door (G1)
---
--- Layout:
---   (0,0)S --> (1,0) -bw1-> (2,0)
---                             |
---              (1,1) <-G1-- (2,1) [K1, B1 -> G1]
---               |
---   (0,2)E <-- (1,2)
---
--- Solution:
---   1. Launch right from (0,0) through passage into (1,0)
---   2. Aim right at bw1, break through into (2,0)
---   3. Launch down through gap into (2,1)
---   4. Push pallet K1 rightward onto button B1 — gate G1 opens
---   5. Launch left through now-open G1 into (1,1)
---   6. Launch down through passage into (1,2)
---   7. Launch left through passage into (0,2)
---   8. Reach exit
---
--- Reasoning moments:
---   1. Figuring out that K1 must be pushed onto B1 to open the gate
---   2. Approaching K1 from the correct side to push it toward B1
---
--- Softlock check:
---   - K1 can always be re-pushed; player re-enters (2,1) from (2,0) above
---   - G1 stays open as long as K1 overlaps B1; K1 only moves when player hits it
---   - Unused cells (0,1) and (2,2) are sealed off
 
 return {
     name = "Under Pressure",

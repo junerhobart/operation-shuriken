@@ -1,34 +1,4 @@
 -- Level 5: "Sequence"
--- Difficulty: 5/10 | Rooms: 9 (3x3 grid, all active)
--- Objects: 2 breakable walls, 2 pallets, 2 buttons, 2 doors, 1 spike strip
---
--- Layout:
---   (0,0)S --> (1,0) -bw1-> (2,0) [K1, B1 -> G1]
---     |                        .  (blocked down)
---   (0,1)[spk] -G1-> (1,1) --> (2,1) [K2, B2 -> G2]
---     | bw2            .  (blocked down)
---   (0,2) ------> (1,2) -G2-> (2,2)E
---
--- Solution:
---   1. (0,0) right to (1,0), break bw1 right into (2,0)
---   2. Push K1 rightward onto B1 in (2,0) — G1 opens
---   3. Backtrack: (2,0) left to (1,0), left to (0,0), down to (0,1)
---   4. Go right through now-open G1 into (1,1)
---   5. Go right into (2,1), push K2 rightward onto B2 — G2 opens
---   6. Backtrack: (2,1) left to (1,1), left through G1 to (0,1)
---   7. Break bw2 down into (0,2), go right to (1,2)
---   8. Go right through G2 into (2,2) — reach exit
---
--- Reasoning moments:
---   1. Must go to (2,0) FIRST to open G1 before the center path is accessible
---   2. After opening G1, must backtrack to (0,1) to use the new passage
---   3. After opening G2, must backtrack again to reach the bottom row
---
--- Softlock check:
---   - K1 re-pushable via (1,0) → (2,0); K2 re-pushable via (1,1) → (2,1)
---   - G1/G2 stay open while pallets overlap buttons
---   - Breakable walls are along the forward-only path
---   - Spikes in (0,1) are avoidable (on left wall, player enters from above/right)
 
 return {
     name = "Sequence",
@@ -88,7 +58,7 @@ return {
         {x=900, y=420, w=100, h=100, type="button", target="door_2"},
 
         -- spikes in (0,1) left wall
-        {x=30, y=420, w=20, h=100, type="spikes", facing="right"},
+        {x=20, y=420, w=20, h=100, type="spikes", facing="right"},
 
         -- exit in (2,2)
         {x=820, y=740, w=80, h=80, type="exit"},

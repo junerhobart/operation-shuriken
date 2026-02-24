@@ -140,9 +140,14 @@ function love.update(dt)
 
     if shake > 0 then shake = shake - dt * 25; if shake < 0 then shake = 0 end end
 
-    player.update(dt, world, particleSystem)
-    player.updateDrag(getMouseWorld())
-    world.update(dt, player)
+    local FIXED_DT = 1 / 60
+    physicsAccum = (physicsAccum or 0) + dt
+    while physicsAccum >= FIXED_DT do
+        player.update(FIXED_DT, world, particleSystem)
+        player.updateDrag(getMouseWorld())
+        world.update(FIXED_DT, player)
+        physicsAccum = physicsAccum - FIXED_DT
+    end
 
     for _, w in ipairs(world.walls) do
         if w.type == "button" then

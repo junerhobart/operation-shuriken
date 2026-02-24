@@ -1,21 +1,4 @@
 -- Level 6: "Spike Alley"
--- Difficulty: 6/10 | Rooms: 9 (3x3 grid)
--- Objects: 1 breakable wall, 2 pallets, 2 buttons, 2 doors, 3 spike strips
---
--- Layout:
---   (0,0)S --> (1,0)[spk] -bw1-> (2,0)
---     (solid below)                 |
---   (0,1)[dead end]  (1,1) <--- (2,1) [K1, B1 -> G1]
---                      | G1
---   (0,2)[dead end]  (1,2) [K2, B2 -> G2] -G2-> (2,2)E
---
--- Solution:
---   1. (0,0) right to (1,0) — dodge spike strip
---   2. Break bw1 right into (2,0)
---   3. Go down to (2,1), push K1 onto B1 — G1 opens
---   4. Go left to (1,1), go down through G1 to (1,2)
---   5. Push K2 onto B2 in (1,2) — G2 opens
---   6. Go right through G2 into (2,2) — reach exit
 
 return {
     name = "Spike Alley",

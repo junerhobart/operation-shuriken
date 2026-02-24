@@ -1,31 +1,4 @@
 -- Level 2: "Wall Runner"
--- Difficulty: 2/10 | Rooms: 7 (3x3 grid, 7 active)
--- Objects: 3 breakable walls
---
--- Layout:
---   (0,0)S --> (1,0) -bw1-> (2,0)
---                             |
---              (1,1) <------ (2,1)
---               | bw2
---              (1,2) -bw3-> (2,2)E
---
--- Solution:
---   1. Launch right from (0,0) through passage into (1,0)
---   2. Aim right at bw1 in vertical wall, break through into (2,0)
---   3. Navigate past pillar, launch down through gap into (2,1)
---   4. Launch left through passage into (1,1)
---   5. Navigate past pillar, aim down at bw2 in floor gap, break through into (1,2)
---   6. Aim right at bw3 in vertical wall, break through into (2,2)
---   7. Reach exit
---
--- Reasoning moments:
---   1. Recognizing three different breakable walls and aiming at each correctly
---   2. Finding the downward passage from (2,0) to (2,1)
---
--- Softlock check:
---   - No doors, buttons, pallets, or portals
---   - Each breakable wall is along the forward path; no backtracking needed
---   - Unused cells (0,1) and (0,2) are sealed off
 
 return {
     name = "Wall Runner",

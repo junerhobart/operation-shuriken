@@ -27,6 +27,7 @@ function resetGame(levelData)
     victory = false
     deathPending = false
     deathTime = 0
+    physicsAccum = 0
     shake   = 0
     camX, camY = player.x, player.y
     camZoom = 1.0
@@ -56,6 +57,7 @@ function loadLevel(n)
     victory = false
     deathPending = false
     deathTime = 0
+    physicsAccum = 0
     shake   = 0
     camX, camY = player.x, player.y
     camZoom = 1.0

@@ -1,30 +1,4 @@
 -- Level 9: "Through the Glass"
--- Difficulty: 7/10 | Rooms: 10 (5x2 grid)
--- Objects: 2 breakable walls, 1 portal pair, 1 pallet, 1 button, 1 door
---
--- Layout (two isolated islands connected only by portal):
---   UPPER: (0,0)S --> (1,0) -bw1-> (2,0) --> (3,0)[portal_a] -G1-> (4,0)E
---   ===== solid barrier — no physical passages between rows =====
---   LOWER: (0,1)[portal_b] --> (1,1) -bw2-> (2,1) --> (3,1) --> (4,1)[K1,B1->G1]
---
--- Solution:
---   1. (0,0) right to (1,0), break bw1, continue right to (2,0), right to (3,0)
---   2. Enter portal_a in (3,0) — teleport to portal_b in (0,1)
---   3. Navigate lower island: (0,1) right to (1,1), break bw2, right to (2,1)-(3,1)-(4,1)
---   4. Push K1 onto B1 in (4,1) — G1 opens (in upper island between (3,0) and (4,0))
---   5. Navigate back to portal_b in (0,1) — teleport to portal_a in (3,0)
---   6. Go right through now-open G1 into (4,0) — reach exit
---
--- Reasoning moments:
---   1. Discovering the portal as the only bridge between the two islands
---   2. Realizing the button in the lower island controls a gate in the upper island
---   3. Must teleport TWICE: once to reach the lower island, once to return
---
--- Softlock check:
---   - Portal is always bidirectional; player can always return to either island
---   - K1 re-pushable; player can re-enter (4,1) from (3,1)
---   - G1 stays open while K1 on B1
---   - Breakable walls are forward-only along the path
 
 return {
     name = "Through the Glass",
