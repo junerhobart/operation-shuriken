@@ -258,7 +258,10 @@ function love.mousepressed(x, y, button)
         return
     end
 
-    if not victory and button == 1 then local wx, wy = getMouseWorld(); player.startDrag(wx, wy) end
+    if not victory and button == 1 then
+        pendingDragX = x
+        pendingDragY = y
+    end
 end
 
 function love.mousemoved(x, y, dx, dy)
@@ -315,6 +318,17 @@ function love.mousemoved(x, y, dx, dy)
             local t  = world.tutorialTexts[editor.selectedText]
             t.x = math.floor((mx2 - editor.textDragOffX) / gs + 0.5) * gs
             t.y = math.floor((my2 - editor.textDragOffY) / gs + 0.5) * gs
+        end
+        return
+    end
+
+    if state == "game" and not victory and pendingDragX then
+        local dist = math.sqrt((x - pendingDragX)^2 + (y - pendingDragY)^2)
+        if dist >= DRAG_THRESHOLD then
+            local wx, wy = getMouseWorld()
+            player.startDrag(wx, wy)
+            pendingDragX = nil
+            pendingDragY = nil
         end
     end
 end
@@ -407,6 +421,8 @@ function love.mousereleased(x, y, button)
     end
 
     if state == "menu" or state == "options" then return end
+    pendingDragX = nil
+    pendingDragY = nil
     if not victory and button == 1 then local r = player.releaseDrag(); if r > 0 then shake = math.max(shake, r * 6) end end
 end
 

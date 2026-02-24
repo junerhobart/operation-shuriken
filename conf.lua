@@ -5,7 +5,7 @@ function love.conf(t)
     t.window.resizable = true
     t.window.highdpi = true
     t.window.msaa = 4
-    t.version = "11.5"
+    t.version = "11.4"
 
     t.modules.physics = false
     t.modules.joystick = true

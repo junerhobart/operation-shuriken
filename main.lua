@@ -52,9 +52,12 @@ lsDrag = {
     lastT    = 0,
 }
 
-activeTouches = {}
-pinchDist0    = nil
-pinchZoom0    = nil
+activeTouches  = {}
+pinchDist0     = nil
+pinchZoom0     = nil
+pendingDragX   = nil   -- screen coords of touch-down, nil when not pending
+pendingDragY   = nil
+DRAG_THRESHOLD = 10    -- pixels before drag commits
 
 function saveProgress()
     local lines = {}
@@ -442,28 +445,40 @@ function love.resize(w, h)
     buttons.options.x     = w/2 - optW/2
     buttons.options.baseY = groupTop + playH + btnGap
 
-    local cy   = h / 2
-    local btnH = math.max(38 * scale, 32)
-
-    local fh   = fonts.main:getHeight()
-    local labels = {"CONTINUE", "LEVEL SELECT", "RESTART"}
-    local keys   = {"continue", "map", "restart"}
-    local gap    = math.max(28 * scale, 20)
-
-    local totalW = 0
-    for _, lbl in ipairs(labels) do totalW = totalW + fonts.main:getWidth(lbl) end
-    totalW = totalW + gap * (#labels - 1)
-    local startX = w/2 - totalW/2
-    local btnY   = cy + 78 * scale
-
-    local cx2 = startX
-    for i, lbl in ipairs(labels) do
-        local tw = fonts.main:getWidth(lbl)
-        victoryButtons[keys[i]].x = cx2
-        victoryButtons[keys[i]].y = btnY
-        victoryButtons[keys[i]].w = tw
-        victoryButtons[keys[i]].h = fh + 4
-        cx2 = cx2 + tw + gap
+    local cy      = h / 2
+    local fh      = fonts.main:getHeight()
+    local labels  = {"CONTINUE", "LEVEL SELECT", "RESTART"}
+    local keys    = {"continue", "map", "restart"}
+    local portrait = h > w
+    -- On mobile/portrait: stack vertically with large tap targets
+    -- On landscape/desktop: horizontal row
+    if portrait then
+        local btnW   = math.min(w * 0.72, 320 * scale)
+        local btnH   = math.max(44 * scale, 44)
+        local vGap2  = math.max(10 * scale, 8)
+        local totalH = #labels * btnH + (#labels - 1) * vGap2
+        local startY = cy + 68 * scale
+        for i, lbl in ipairs(labels) do
+            victoryButtons[keys[i]].x = w/2 - btnW/2
+            victoryButtons[keys[i]].y = startY + (i-1) * (btnH + vGap2)
+            victoryButtons[keys[i]].w = btnW
+            victoryButtons[keys[i]].h = btnH
+        end
+    else
+        local gap    = math.max(28 * scale, 20)
+        local totalW = 0
+        for _, lbl in ipairs(labels) do totalW = totalW + fonts.main:getWidth(lbl) + gap * 2 end
+        local startX = w/2 - totalW/2
+        local btnY   = cy + 78 * scale
+        local cx2    = startX
+        for i, lbl in ipairs(labels) do
+            local tw = fonts.main:getWidth(lbl) + gap * 2
+            victoryButtons[keys[i]].x = cx2
+            victoryButtons[keys[i]].y = btnY - fh
+            victoryButtons[keys[i]].w = tw
+            victoryButtons[keys[i]].h = fh * 3
+            cx2 = cx2 + tw
+        end
     end
 end
 
@@ -496,7 +511,10 @@ function love.touchmoved(id, x, y, dx, dy, pressure)
     if n == 2 and pinchDist0 and pinchZoom0 then
         local dist = touchPinchDist()
         if dist and dist > 0 then
-            camZoom = math.max(0.35, math.min(2.5, pinchZoom0 * (dist / pinchDist0)))
+            -- apply 1.15x power curve so zooming out feels more responsive
+            local ratio = dist / pinchDist0
+            local powered = ratio > 1 and ratio or (ratio ^ 0.85)
+            camZoom = math.max(0.25, math.min(3.0, pinchZoom0 * powered))
         end
     elseif n == 1 then
         love.mousemoved(x, y, dx, dy)
