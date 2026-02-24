@@ -138,8 +138,3 @@ npx love.js -t "Operation Shuriken" -m 67108864 game.love build/web/
 python3 build/web/serve.py 8080
 ```
 
----
-
-## License
-
-Personal project. All rights reserved.
