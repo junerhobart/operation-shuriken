@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
   <title>Operation: Shuriken</title>
+  <script src="coi-serviceworker.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html,body{width:100%;height:100%;background:#0e0e0e;overflow:hidden}
@@ -68,7 +69,6 @@
         } catch(e) {}
       };
 
-      // Re-poke on every gesture in case iOS re-suspends
       document.addEventListener('touchstart', function(){ window._unlockAllCtxs(); }, {passive:true});
       document.addEventListener('mousedown',  function(){ window._unlockAllCtxs(); }, {passive:true});
     })();
@@ -88,7 +88,6 @@
       })(),
       setStatus:function(text){
         if(!text){
-          // Pause the main loop so nothing animates behind the overlay
           setTimeout(function(){
             try { Module._emscripten_pause_main_loop(); } catch(e) {}
           }, 50);
@@ -103,11 +102,8 @@
 
           function dismiss(e) {
             if (e) e.preventDefault();
-            // Unlock audio first
             window._unlockAllCtxs();
-            // Resume the game loop
             try { Module._emscripten_resume_main_loop(); } catch(e2) {}
-            // Show canvas and fade overlay
             document.getElementById("canvas").style.visibility = "visible";
             overlay.style.opacity = "0";
             setTimeout(function(){ overlay.remove(); }, 320);
