@@ -15,65 +15,67 @@
       background:#111;color:#e8e4dc;font:600 15px/1 system-ui,sans-serif;
       letter-spacing:.12em;pointer-events:none;transition:opacity .4s
     }
-    #tap{
-      position:fixed;inset:0;display:none;align-items:center;justify-content:center;
-      flex-direction:column;background:rgba(10,10,10,0.92);
-      color:#e8e4dc;cursor:pointer;-webkit-tap-highlight-color:transparent;
-      touch-action:manipulation;z-index:10;
-    }
-    #tap .label{font:700 18px/1 system-ui,sans-serif;letter-spacing:.2em;opacity:.9}
-    #tap .sub{margin-top:12px;font:400 12px/1 system-ui,sans-serif;letter-spacing:.12em;opacity:.45}
   </style>
 </head>
 <body>
   <div id="loading">LOADING…</div>
-  <div id="tap">
-    <div class="label">TAP TO START</div>
-    <div class="sub">tap anywhere to enable audio</div>
-  </div>
   <canvas id="loadingCanvas"></canvas>
   <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
   <script>
-    var _audioUnlocked = false;
-    var _gameReady     = false;
+    // ── Audio unlock ────────────────────────────────────────────────────────
+    // Intercept every AudioContext created (including love.js's internal one)
+    // so we can play a silent buffer through the exact instance on first gesture.
+    (function() {
+      var Orig = window.AudioContext || window.webkitAudioContext;
+      if (!Orig) return;
 
-    function unlockAudio(cb) {
-      if (_audioUnlocked) { if (cb) cb(); return; }
-      try {
-        var ctx = new (window.AudioContext || window.webkitAudioContext)();
-        // Play a one-frame silent buffer — this is the iOS unlock trick
-        var buf = ctx.createBuffer(1, 1, 22050);
-        var src = ctx.createBufferSource();
-        src.buffer = buf;
-        src.connect(ctx.destination);
-        src.start(0);
-        ctx.resume().then(function() {
-          _audioUnlocked = true;
-          // Also resume love.js AL context if already created
-          try { if (typeof AL !== 'undefined' && AL.currentCtx) AL.currentCtx.resume(); } catch(e){}
-          if (cb) cb();
-        }).catch(function() {
-          _audioUnlocked = true;
-          if (cb) cb();
-        });
-      } catch(e) {
-        _audioUnlocked = true;
-        if (cb) cb();
+      var _ctxs      = [];   // all contexts ever created
+      var _unlocked  = false;
+
+      function silentUnlock(ctx) {
+        try {
+          var buf = ctx.createBuffer(1, 1, 22050);
+          var src = ctx.createBufferSource();
+          src.buffer = buf;
+          src.connect(ctx.destination);
+          src.start(0);
+          ctx.resume();
+        } catch(e) {}
       }
-    }
 
-    function dismissTap() {
-      var tap = document.getElementById('tap');
-      if (tap) { tap.style.opacity = '0'; tap.style.transition = 'opacity .3s'; setTimeout(function(){ tap.remove(); }, 350); }
-    }
+      function onGesture() {
+        if (_unlocked) return;
+        _unlocked = true;
+        // Unlock every context we know about (including AL.currentCtx)
+        _ctxs.forEach(silentUnlock);
+        try { if (typeof AL !== 'undefined' && AL.currentCtx && _ctxs.indexOf(AL.currentCtx) < 0) silentUnlock(AL.currentCtx); } catch(e) {}
+        // Keep poking AL context on every subsequent gesture so iOS doesn't re-suspend
+        ['touchstart','mousedown'].forEach(function(ev) {
+          document.removeEventListener(ev, onGesture);
+        });
+        document.addEventListener('touchstart', poke, {passive:true});
+        document.addEventListener('mousedown',  poke, {passive:true});
+      }
 
-    // Keep love.js AL context alive on every interaction
-    function poke() {
-      try { if (typeof AL !== 'undefined' && AL.currentCtx && AL.currentCtx.state === 'suspended') AL.currentCtx.resume(); } catch(e){}
-    }
-    ['touchstart','mousedown','keydown'].forEach(function(ev){
-      document.addEventListener(ev, poke, {passive:true});
-    });
+      function poke() {
+        try { if (typeof AL !== 'undefined' && AL.currentCtx && AL.currentCtx.state === 'suspended') silentUnlock(AL.currentCtx); } catch(e) {}
+      }
+
+      // Wrap AudioContext so we capture love.js's instance
+      var Wrapped = function AudioContext(opts) {
+        var ctx = opts ? new Orig(opts) : new Orig();
+        _ctxs.push(ctx);
+        if (_unlocked) silentUnlock(ctx);  // already had gesture — unlock immediately
+        return ctx;
+      };
+      Wrapped.prototype = Orig.prototype;
+      window.AudioContext = window.webkitAudioContext = Wrapped;
+
+      ['touchstart','mousedown','keydown'].forEach(function(ev) {
+        document.addEventListener(ev, onGesture, {passive:true});
+      });
+    })();
+    // ────────────────────────────────────────────────────────────────────────
 
     window.addEventListener("keydown",function(e){if([32,37,38,39,40].indexOf(e.keyCode)>-1)e.preventDefault();},false);
     window.onload=function(){window.focus();};
@@ -89,29 +91,9 @@
       })(),
       setStatus:function(text){
         if(!text){
-          _gameReady = true;
           document.getElementById("canvas").style.visibility="visible";
           var ld=document.getElementById("loading");
           if(ld){ld.style.opacity="0";setTimeout(function(){ld.remove();},500);}
-          // Show tap-to-start on touch devices; on desktop just unlock silently
-          var isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-          if (isTouch) {
-            var tap = document.getElementById('tap');
-            if (tap) {
-              tap.style.display = 'flex';
-              tap.addEventListener('touchstart', function handler(e) {
-                e.preventDefault();
-                tap.removeEventListener('touchstart', handler);
-                unlockAudio(dismissTap);
-              }, {passive:false});
-              tap.addEventListener('click', function handler2() {
-                tap.removeEventListener('click', handler2);
-                unlockAudio(dismissTap);
-              });
-            }
-          } else {
-            unlockAudio(null);
-          }
         } else {
           var ld=document.getElementById("loading");
           if(ld) ld.textContent=text.replace(/\(.*?\)/g,"").trim()||"LOADING…";
