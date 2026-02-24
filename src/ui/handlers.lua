@@ -6,7 +6,7 @@ function love.mousepressed(x, y, button)
         if button == 1 then
             if pointInRect(x, y, buttons.play) then
                 sounds.click:stop(); sounds.click:play()
-                state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0
+                state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0; speedrunTime = 0; speedrunMoveTime = 0
             elseif pointInRect(x, y, buttons.options) then
                 sounds.click:stop(); sounds.click:play()
                 prevState = "menu"; state = "options"; optionsTime = 0
@@ -92,7 +92,7 @@ function love.mousepressed(x, y, button)
         end
         if inVB(vb.map) then
             sounds.click:stop(); sounds.click:play()
-            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0; return
+            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0; speedrunTime = 0; speedrunMoveTime = 0; return
         end
         if inVB(vb.restart) then
             sounds.click:stop(); sounds.click:play(); loadLevel(currentLevel); return
@@ -213,7 +213,7 @@ function love.keypressed(key)
                 end
             end
         elseif key == "escape" then
-            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0
+            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0; speedrunTime = 0; speedrunMoveTime = 0
         end
         return
     end
@@ -225,7 +225,7 @@ function love.keypressed(key)
             loadLevel(currentLevel)
         elseif key == "escape" then
             deathPending = false; deathTime = 0
-            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0
+            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0; speedrunTime = 0; speedrunMoveTime = 0
         end
         return
     end
@@ -238,7 +238,7 @@ function love.keypressed(key)
                 storyType = "post"; storyTime = 0; state = "story"
             end
         elseif key == "m" then
-            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0
+            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0; speedrunTime = 0; speedrunMoveTime = 0
         elseif key == "r" then loadLevel(currentLevel)
         end
         return
@@ -248,7 +248,7 @@ function love.keypressed(key)
         if state == "editor" and editor.editingText then
             editor.editingText = false
         elseif state == "game" then
-            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0
+            state = "levelSelect"; levelSelectTime = 0; levelSelectScroll = 0; lsDrag.active = false; lsDrag.velY = 0; speedrunTime = 0; speedrunMoveTime = 0
         elseif state == "options" then state = prevState
         elseif state == "editor" then state = "menu"; camZoom = 1.0; playMusic("menu")
         else love.event.quit()
