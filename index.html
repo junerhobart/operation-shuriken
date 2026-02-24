@@ -15,67 +15,65 @@
       background:#111;color:#e8e4dc;font:600 15px/1 system-ui,sans-serif;
       letter-spacing:.12em;pointer-events:none;transition:opacity .4s
     }
+    #start{
+      position:fixed;inset:0;display:none;
+      align-items:center;justify-content:center;
+      background:rgba(10,10,10,0.88);
+      cursor:pointer;-webkit-tap-highlight-color:transparent;
+      touch-action:manipulation;z-index:10;
+      transition:opacity .3s;
+    }
+    #start-label{
+      font:700 17px/1 system-ui,sans-serif;
+      letter-spacing:.22em;color:#e8e4dc;
+      text-transform:uppercase;opacity:.88;
+      pointer-events:none;
+    }
   </style>
 </head>
 <body>
   <div id="loading">LOADING…</div>
+  <div id="start"><div id="start-label">CLICK TO PLAY</div></div>
   <canvas id="loadingCanvas"></canvas>
   <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
   <script>
-    // ── Audio unlock ────────────────────────────────────────────────────────
-    // Intercept every AudioContext created (including love.js's internal one)
-    // so we can play a silent buffer through the exact instance on first gesture.
+    // ── Audio unlock ─────────────────────────────────────────────────────────
+    // Intercept AudioContext creation so we hold a reference to love.js's instance.
     (function() {
       var Orig = window.AudioContext || window.webkitAudioContext;
       if (!Orig) return;
+      var _ctxs = [];
 
-      var _ctxs      = [];   // all contexts ever created
-      var _unlocked  = false;
-
-      function silentUnlock(ctx) {
+      window._silentUnlock = function(ctx) {
         try {
           var buf = ctx.createBuffer(1, 1, 22050);
           var src = ctx.createBufferSource();
-          src.buffer = buf;
-          src.connect(ctx.destination);
-          src.start(0);
+          src.buffer = buf; src.connect(ctx.destination); src.start(0);
           ctx.resume();
         } catch(e) {}
-      }
+      };
 
-      function onGesture() {
-        if (_unlocked) return;
-        _unlocked = true;
-        // Unlock every context we know about (including AL.currentCtx)
-        _ctxs.forEach(silentUnlock);
-        try { if (typeof AL !== 'undefined' && AL.currentCtx && _ctxs.indexOf(AL.currentCtx) < 0) silentUnlock(AL.currentCtx); } catch(e) {}
-        // Keep poking AL context on every subsequent gesture so iOS doesn't re-suspend
-        ['touchstart','mousedown'].forEach(function(ev) {
-          document.removeEventListener(ev, onGesture);
-        });
-        document.addEventListener('touchstart', poke, {passive:true});
-        document.addEventListener('mousedown',  poke, {passive:true});
-      }
-
-      function poke() {
-        try { if (typeof AL !== 'undefined' && AL.currentCtx && AL.currentCtx.state === 'suspended') silentUnlock(AL.currentCtx); } catch(e) {}
-      }
-
-      // Wrap AudioContext so we capture love.js's instance
       var Wrapped = function AudioContext(opts) {
         var ctx = opts ? new Orig(opts) : new Orig();
         _ctxs.push(ctx);
-        if (_unlocked) silentUnlock(ctx);  // already had gesture — unlock immediately
         return ctx;
       };
       Wrapped.prototype = Orig.prototype;
       window.AudioContext = window.webkitAudioContext = Wrapped;
 
-      ['touchstart','mousedown','keydown'].forEach(function(ev) {
-        document.addEventListener(ev, onGesture, {passive:true});
-      });
+      window._unlockAllCtxs = function() {
+        _ctxs.forEach(window._silentUnlock);
+        try {
+          if (typeof AL !== 'undefined' && AL.currentCtx && _ctxs.indexOf(AL.currentCtx) < 0)
+            window._silentUnlock(AL.currentCtx);
+        } catch(e) {}
+      };
+
+      // Keep re-poking on every gesture in case iOS re-suspends
+      document.addEventListener('touchstart', function() { window._unlockAllCtxs(); }, {passive:true});
+      document.addEventListener('mousedown',  function() { window._unlockAllCtxs(); }, {passive:true});
     })();
-    // ────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
 
     window.addEventListener("keydown",function(e){if([32,37,38,39,40].indexOf(e.keyCode)>-1)e.preventDefault();},false);
     window.onload=function(){window.focus();};
@@ -91,9 +89,28 @@
       })(),
       setStatus:function(text){
         if(!text){
+          // Game finished loading — show the start overlay
           document.getElementById("canvas").style.visibility="visible";
           var ld=document.getElementById("loading");
           if(ld){ld.style.opacity="0";setTimeout(function(){ld.remove();},500);}
+
+          var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+          var overlay = document.getElementById("start");
+          document.getElementById("start-label").textContent = isTouch ? "TAP TO PLAY" : "CLICK TO PLAY";
+          overlay.style.display = "flex";
+
+          function dismiss(e) {
+            if (e) e.preventDefault();
+            window._unlockAllCtxs();
+            overlay.style.opacity = "0";
+            setTimeout(function(){ overlay.remove(); }, 320);
+            overlay.removeEventListener("mousedown", dismiss);
+            overlay.removeEventListener("touchstart", dismiss);
+            overlay.removeEventListener("keydown", dismiss);
+          }
+          overlay.addEventListener("mousedown",  dismiss, {passive:false});
+          overlay.addEventListener("touchstart", dismiss, {passive:false});
+          document.addEventListener("keydown",   dismiss, {once:true});
         } else {
           var ld=document.getElementById("loading");
           if(ld) ld.textContent=text.replace(/\(.*?\)/g,"").trim()||"LOADING…";
