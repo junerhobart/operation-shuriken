@@ -59,4 +59,10 @@ settings = {
     dragSense      = 1.0,
     darkMode       = false,
     fullscreen     = false,
+    vsync          = true,
+    speedrunTimer  = false,
 }
+
+speedrunTime      = 0
+speedrunMoveTime  = 0
+resIndex          = 2

@@ -1,3 +1,5 @@
+local resolutions = {"800x600", "1024x768", "1280x720", "1440x900", "1920x1080"}
+
 function drawOptions()
     local w, h  = love.graphics.getDimensions()
     local scale = getUIScale()
@@ -46,19 +48,34 @@ function drawOptions()
     local cOff     = drop(0.10, 0.28)
     local contentW = math.min(420 * scale, w * 0.88)
     local contentX = cx - contentW / 2
-    local contentY = math.min(240 * scale, h * 0.32) + cOff
+    local contentY = math.min(270 * scale, h * 0.36) + cOff
     local rowH     = math.min(90 * scale, h * 0.14)
+    local switchH  = math.min(44 * scale, h * 0.07)
 
     if optionsTab == "General" then
         drawSlider("Field of View",    settings.fov,            70, 120, contentX, contentY,           contentW, function(v) settings.fov = v end)
         drawSlider("Screen Shake",     settings.shakeIntensity,  0,  2.0, contentX, contentY + rowH,    contentW, function(v) settings.shakeIntensity = v end)
         drawSlider("Drag Sensitivity", settings.dragSense,      0.5, 2.0, contentX, contentY + rowH*2,  contentW, function(v) settings.dragSense = v end)
+        drawSwitch("Speedrun Timer", settings.speedrunTimer, contentX, contentY + rowH*2 + switchH + 16, contentW,
+            function(v) settings.speedrunTimer = v; if v then speedrunTime = 0; speedrunMoveTime = 0 end end)
     elseif optionsTab == "Audio" then
         drawSlider("Music Volume", settings.musicVol, 0, 1.0, contentX, contentY,        contentW, function(v) settings.musicVol = v end)
         drawSlider("SFX Volume",   settings.sfxVol,   0, 1.0, contentX, contentY + rowH, contentW, function(v) settings.sfxVol = v end)
     elseif optionsTab == "Display" then
-        drawSwitch("Fullscreen", settings.fullscreen, contentX, contentY, contentW,
+        drawSwitch("Fullscreen", settings.fullscreen, contentX, contentY - 20, contentW,
             function(v) settings.fullscreen = v; if love.system.getOS() ~= "Web" then love.window.setFullscreen(v) end end)
+        drawSwitch("VSync", settings.vsync, contentX, contentY - 20 + switchH, contentW,
+            function(v) settings.vsync = v; love.window.setVSync(v and 1 or 0) end)
+        local isWeb = love.system.getOS() == "Web"
+        if not isWeb then
+            drawSelector("Resolution", resolutions, resIndex, contentX, contentY - 20 + switchH * 2 + 12, contentW,
+                function(idx)
+                    resIndex = idx
+                    local rw, rh = resolutions[idx]:match("(%d+)x(%d+)")
+                    love.window.setMode(tonumber(rw), tonumber(rh), {resizable=true, highdpi=true, msaa=4, vsync=settings.vsync and 1 or 0})
+                    love.resize(tonumber(rw), tonumber(rh))
+                end)
+        end
     end
 
     local footerA  = math.min(math.max(optionsTime - 0.25, 0) / 0.20, 1)
@@ -72,11 +89,11 @@ end
 function drawSlider(label, val, min, max, x, y, w, callback)
     love.graphics.setFont(fonts.main)
     love.graphics.setColor(0.18, 0.18, 0.18, 1)
-    love.graphics.print(label, x, y - 28)
+    love.graphics.print(label, x, y - 42)
 
     local valStr = string.format(max <= 2 and "%.2f" or "%.0f", val)
     love.graphics.setColor(0.52, 0.52, 0.50, 1)
-    love.graphics.printf(valStr, x, y - 28, w, "right")
+    love.graphics.printf(valStr, x, y - 42, w, "right")
 
     love.graphics.setColor(0.78, 0.77, 0.74, 1)
     love.graphics.rectangle("fill", x, y - 1, w, 4, 2, 2)
@@ -124,6 +141,49 @@ function drawSwitch(label, val, x, y, contentW, callback)
         if love.mouse.isDown(1) and not _switchLock then
             callback(not val); _switchLock = true
             sounds.click:stop(); sounds.click:play()
+        end
+    end
+end
+
+function drawSelector(label, options, currentIdx, x, y, contentW, callback)
+    love.graphics.setFont(fonts.main)
+    love.graphics.setColor(0.18, 0.18, 0.18, 1)
+    love.graphics.print(label, x, y)
+
+    local fh   = fonts.main:getHeight()
+    local valW = contentW * 0.5
+    local valX = x + contentW - valW
+    local valY = y
+
+    local arrowW = 20
+    local textX  = valX + arrowW
+    local textW  = valW - arrowW * 2
+    local current = options[currentIdx] or "?"
+
+    love.graphics.setColor(0.10, 0.10, 0.10, 0.85)
+    love.graphics.printf(current, textX, valY, textW, "center")
+
+    local mx, my = love.mouse.getPosition()
+
+    local leftX = valX
+    local leftHov = mx > leftX and mx < leftX + arrowW and my > valY and my < valY + fh
+    love.graphics.setColor(0.10, 0.10, 0.10, leftHov and 1 or 0.45)
+    love.graphics.printf("<", leftX, valY, arrowW, "center")
+
+    local rightX = valX + valW - arrowW
+    local rightHov = mx > rightX and mx < rightX + arrowW and my > valY and my < valY + fh
+    love.graphics.setColor(0.10, 0.10, 0.10, rightHov and 1 or 0.45)
+    love.graphics.printf(">", rightX, valY, arrowW, "center")
+
+    if love.mouse.isDown(1) and not _switchLock then
+        if leftHov and currentIdx > 1 then
+            _switchLock = true
+            sounds.click:stop(); sounds.click:play()
+            callback(currentIdx - 1)
+        elseif rightHov and currentIdx < #options then
+            _switchLock = true
+            sounds.click:stop(); sounds.click:play()
+            callback(currentIdx + 1)
         end
     end
 end

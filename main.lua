@@ -26,7 +26,7 @@ require('src.ui.handlers')
 
 -- ─── helpers ────────────────────────────────────────────────────────────────
 
-local function updateColors()
+function updateColors()
     if settings.darkMode then
         C.COLOR_BG           = {0.07, 0.07, 0.085}
         C.COLOR_WALL         = {0.16, 0.16, 0.19}
@@ -177,6 +177,13 @@ function love.update(dt)
     if deathPending then
         deathTime = deathTime + dt
     end
+
+    if settings.speedrunTimer and not victory and not deathPending then
+        speedrunTime = speedrunTime + dt
+        if player and not player.dragging and player.getSpeed() > 5 then
+            speedrunMoveTime = speedrunMoveTime + dt
+        end
+    end
 end
 
 function drawGame()
@@ -232,6 +239,25 @@ function love.draw()
         love.graphics.setFont(fonts.main)
         love.graphics.setColor(0.10, 0.10, 0.10, 0.30)
         love.graphics.printf(math.floor(camZoom * 100) .. "%", w - 90, h - 36, 80, "right")
+    end
+    if settings.speedrunTimer then
+        love.graphics.setFont(fonts.main)
+        local function fmtTime(t)
+            local mins = math.floor(t / 60)
+            local secs = math.floor(t % 60)
+            local ms   = math.floor((t * 1000) % 1000)
+            return string.format("%02d:%02d:%03d", mins, secs, ms)
+        end
+        local alpha = (victory or deathPending) and 0.35 or 0.65
+        local fh = fonts.main:getHeight()
+        love.graphics.setColor(0.10, 0.10, 0.10, alpha * 0.5)
+        love.graphics.print("ACTIVE", 12, 10)
+        love.graphics.setColor(0.10, 0.10, 0.10, alpha)
+        love.graphics.print(fmtTime(speedrunMoveTime), 12, 10 + fh)
+        love.graphics.setColor(0.10, 0.10, 0.10, alpha * 0.5)
+        love.graphics.print("TOTAL", 12, 14 + fh * 2)
+        love.graphics.setColor(0.10, 0.10, 0.10, alpha)
+        love.graphics.print(fmtTime(speedrunTime), 12, 14 + fh * 3)
     end
     if victory then drawVictory() end
     if deathPending then drawDeath() end
