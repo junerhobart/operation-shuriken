@@ -188,6 +188,7 @@ function love.update(dt)
     end
 end
 
+
 function drawGame()
     love.graphics.push()
     local w, h = love.graphics.getDimensions()
