@@ -36,6 +36,11 @@ jobs:
       - name: Build web
         run: love.js -t "Operation Shuriken" -m 67108864 game.love /tmp/web-output
 
+      - name: Get coi-serviceworker
+        run: |
+          curl -sL "https://cdn.jsdelivr.net/npm/coi-serviceworker/coi-serviceworker.min.js" \
+            -o /tmp/web-output/coi-serviceworker.js
+
       - name: Deploy to web-build
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
@@ -43,8 +48,14 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin web-build
           git checkout web-build
-          find . -maxdepth 1 ! -name '.git' ! -name '.github' ! -name '.' -exec rm -rf {} + 2>/dev/null || true
-          cp -r /tmp/web-output/. .
+          cp /tmp/web-output/game.data .
+          cp /tmp/web-output/game.js .
+          cp /tmp/web-output/love.js .
+          cp /tmp/web-output/love.wasm .
+          cp /tmp/web-output/love.worker.js .
+          cp /tmp/web-output/coi-serviceworker.js .
+          cp .github/web/index.html .
+          touch .nojekyll
           git add -A
           git diff --cached --quiet || git commit -m "Web build from main@$SHORT_SHA"
           git push origin web-build
