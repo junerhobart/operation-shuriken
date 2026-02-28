@@ -41,6 +41,9 @@ jobs:
           SHORT_SHA=$(git rev-parse --short HEAD)
           VERSION=$(cat .github/VERSION | tr -d '[:space:]')
           cp .github/VERSION /tmp/game-version
+          cp .github/web/index.html /tmp/index.html
+          cp .github/web/sw.js /tmp/sw.js
+          sed -i "s/BUILD_SHA/$SHORT_SHA/g" /tmp/sw.js
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin web-build
@@ -50,9 +53,8 @@ jobs:
           cp /tmp/web-output/love.js .
           cp /tmp/web-output/love.wasm .
           cp /tmp/web-output/love.worker.js .
-          cp .github/web/index.html .
-          cp .github/web/sw.js .
-          sed -i "s/BUILD_SHA/$SHORT_SHA/g" sw.js
+          cp /tmp/index.html .
+          cp /tmp/sw.js .
           cp /tmp/game-version .github/VERSION
           touch .nojekyll
           git add -A
