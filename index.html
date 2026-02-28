@@ -179,18 +179,25 @@
 
       if (typeof SharedArrayBuffer === "undefined") {
         document.getElementById("loading-status").textContent = "activating...";
-        try {
-          if (!sessionStorage.getItem("sab_reloaded")) {
-            sessionStorage.setItem("sab_reloaded", "1");
-            setTimeout(function () { location.reload(); }, 1200);
-          } else {
-            showError("SharedArrayBuffer unavailable. Try a different browser or disable privacy shields.");
+        var attempts = 0;
+        try { attempts = parseInt(sessionStorage.getItem("sab_attempts") || "0"); } catch (e) {}
+        if (attempts < 3) {
+          try { sessionStorage.setItem("sab_attempts", String(attempts + 1)); } catch (e) {}
+          if (navigator.serviceWorker) {
+            navigator.serviceWorker.addEventListener("controllerchange", function () {
+              location.reload();
+            });
           }
-        } catch (e) {
-          setTimeout(function () { location.reload(); }, 1200);
+          setTimeout(function () { location.reload(); }, 3000);
+        } else {
+          showError(
+            "SharedArrayBuffer is not available in this browser. " +
+            "Try Chrome, Edge, or Firefox. If using Safari, ensure it is up to date. " +
+            "Private/Incognito mode may also block this feature."
+          );
         }
       } else {
-        sessionStorage.removeItem("sab_reloaded");
+        try { sessionStorage.removeItem("sab_attempts"); } catch (e) {}
         var s1 = document.createElement("script");
         s1.src = "game.js";
         s1.onload = function () {
