@@ -1,3 +1,6 @@
 build/
 *.love
 .DS_Store
+
+# Local AI context (never commit)
+.context/
