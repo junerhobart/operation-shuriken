@@ -10,7 +10,7 @@
       html, body {
         width: 100%; height: 100%;
         overflow: hidden;
-        background: #0b1a24;
+        background: #0d0d0d;
       }
       #canvas {
         position: fixed;
@@ -25,7 +25,7 @@
         position: fixed;
         top: 0; left: 0;
         width: 100%; height: 100%;
-        background: #0b1a24;
+        background: #0d0d0d;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -36,23 +36,23 @@
       }
       #loading-title {
         font: bold 22px arial;
-        color: #8ec3e3;
+        color: #e8e8e8;
         letter-spacing: 0.05em;
       }
       #loading-status {
         font: 13px arial;
-        color: #4a7a9b;
+        color: #666;
       }
       #loading-bar-track {
         width: 240px;
         height: 3px;
-        background: #1c3a4e;
+        background: #222;
         border-radius: 2px;
         overflow: hidden;
       }
       #loading-bar-fill {
         height: 100%;
-        background: #8ec3e3;
+        background: #aaa;
         width: 0%;
         transition: width 0.2s ease;
         border-radius: 2px;
@@ -158,13 +158,11 @@
       window.onerror = function (msg, src, line, col, err) {
         var text = (err && err.message) ? err.message : String(msg);
         if (text.indexOf("SharedArrayBuffer") !== -1) {
-          showError(
-            "SharedArrayBuffer unavailable. " +
-            "<strong>Reload the page once</strong> — the service worker activates on the second load."
-          );
-        } else {
-          showError(text + " (see browser console for details)");
+          document.getElementById("loading-status").textContent = "Activating... reloading";
+          setTimeout(function () { location.reload(); }, 800);
+          return;
         }
+        showError(text + " (see browser console for details)");
         Module.setStatus = function (t) {
           if (t) Module.printErr("[post-exception] " + t);
         };
