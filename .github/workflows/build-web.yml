@@ -36,16 +36,6 @@ jobs:
       - name: Build web
         run: love.js -t "Operation Shuriken" -m 67108864 game.love /tmp/web-output
 
-      - name: Get coi-serviceworker
-        run: |
-          COI_PATH=$(npm root -g)/love.js/src/coi-serviceworker.js
-          if [ -f "$COI_PATH" ]; then
-            cp "$COI_PATH" /tmp/web-output/coi-serviceworker.js
-          elif [ ! -f /tmp/web-output/coi-serviceworker.js ]; then
-            curl -sL "https://cdn.jsdelivr.net/npm/coi-serviceworker/coi-serviceworker.min.js" \
-              -o /tmp/web-output/coi-serviceworker.js
-          fi
-
       - name: Deploy to web-build
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
@@ -60,8 +50,9 @@ jobs:
           cp /tmp/web-output/love.js .
           cp /tmp/web-output/love.wasm .
           cp /tmp/web-output/love.worker.js .
-          cp /tmp/web-output/coi-serviceworker.js .
           cp .github/web/index.html .
+          cp .github/web/sw.js .
+          sed -i "s/BUILD_SHA/$SHORT_SHA/g" sw.js
           cp /tmp/game-version .github/VERSION
           touch .nojekyll
           git add -A
