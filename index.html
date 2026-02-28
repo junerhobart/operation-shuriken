@@ -1,138 +1,111 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-  <title>Operation: Shuriken</title>
-  <script src="coi-serviceworker.js"></script>
-  <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body{width:100%;height:100%;background:#0e0e0e;overflow:hidden}
-    canvas{display:block;width:100%;height:100%;object-fit:contain}
-    #loadingCanvas{display:none}
-    #canvas{visibility:hidden}
-    #loading{
-      position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-      background:#111;color:#e8e4dc;font:600 15px/1 system-ui,sans-serif;
-      letter-spacing:.12em;pointer-events:none;transition:opacity .4s
-    }
-    #start{
-      position:fixed;inset:0;display:none;
-      align-items:center;justify-content:center;
-      background:#111;
-      cursor:pointer;-webkit-tap-highlight-color:transparent;
-      touch-action:manipulation;z-index:10;
-      transition:opacity .3s;
-    }
-    #start-label{
-      font:700 17px/1 system-ui,sans-serif;
-      letter-spacing:.22em;color:#e8e4dc;
-      text-transform:uppercase;opacity:.88;
-      pointer-events:none;
-    }
-  </style>
-</head>
-<body>
-  <div id="loading">LOADING…</div>
-  <div id="start"><div id="start-label">CLICK TO PLAY</div></div>
-  <canvas id="loadingCanvas"></canvas>
-  <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
-  <script>
-    // ── Audio unlock ─────────────────────────────────────────────────────────
-    (function() {
-      var Orig = window.AudioContext || window.webkitAudioContext;
-      if (!Orig) return;
-      var _ctxs = [];
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, minimum-scale=1, maximum-scale=1">
+    <title>Operation Shuriken</title>
 
-      window._silentUnlock = function(ctx) {
-        try {
-          var buf = ctx.createBuffer(1, 1, 22050);
-          var src = ctx.createBufferSource();
-          src.buffer = buf; src.connect(ctx.destination); src.start(0);
-          ctx.resume();
-        } catch(e) {}
-      };
+    <!-- Load custom style sheet -->
+    <link rel="stylesheet" type="text/css" href="theme/love.css">
+  </head>
+  <body>
+    <center>
+      <div>
+        <h1>Operation Shuriken</h1>
+        <canvas id="loadingCanvas" oncontextmenu="event.preventDefault()" width="800" height="600"></canvas>
+        <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+      </div>
+    </center>
 
-      var Wrapped = function AudioContext(opts) {
-        var ctx = opts ? new Orig(opts) : new Orig();
-        _ctxs.push(ctx);
-        return ctx;
-      };
-      Wrapped.prototype = Orig.prototype;
-      window.AudioContext = window.webkitAudioContext = Wrapped;
-
-      window._unlockAllCtxs = function() {
-        _ctxs.forEach(window._silentUnlock);
-        try {
-          if (typeof AL !== 'undefined' && AL.currentCtx && _ctxs.indexOf(AL.currentCtx) < 0)
-            window._silentUnlock(AL.currentCtx);
-        } catch(e) {}
-      };
-
-      document.addEventListener('touchstart', function(){ window._unlockAllCtxs(); }, {passive:true});
-      document.addEventListener('mousedown',  function(){ window._unlockAllCtxs(); }, {passive:true});
-    })();
-    // ─────────────────────────────────────────────────────────────────────────
-
-    window.addEventListener("keydown",function(e){if([32,37,38,39,40].indexOf(e.keyCode)>-1)e.preventDefault();},false);
-    window.onload=function(){window.focus();};
-
-    var Module={
-      arguments:["./game.love"],
-      INITIAL_MEMORY:67108864,
-      printErr:console.error.bind(console),
-      canvas:(function(){
-        var c=document.getElementById("canvas");
-        c.addEventListener("webglcontextlost",function(e){e.preventDefault();location.reload();},false);
-        return c;
-      })(),
-      setStatus:function(text){
-        if(!text){
-          setTimeout(function(){
-            try { Module._emscripten_pause_main_loop(); } catch(e) {}
-          }, 50);
-
-          var ld=document.getElementById("loading");
-          if(ld){ld.style.opacity="0";setTimeout(function(){ld.remove();},500);}
-
-          var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-          var overlay = document.getElementById("start");
-          document.getElementById("start-label").textContent = isTouch ? "TAP TO PLAY" : "CLICK TO PLAY";
-          overlay.style.display = "flex";
-
-          function dismiss(e) {
-            if (e) e.preventDefault();
-            window._unlockAllCtxs();
-            try { Module._emscripten_resume_main_loop(); } catch(e2) {}
-            document.getElementById("canvas").style.visibility = "visible";
-            overlay.style.opacity = "0";
-            setTimeout(function(){ overlay.remove(); }, 320);
-            overlay.removeEventListener("mousedown",  dismiss);
-            overlay.removeEventListener("touchstart", dismiss);
-            document.removeEventListener("keydown",   onKey);
-          }
-          function onKey() { dismiss(null); }
-
-          overlay.addEventListener("mousedown",  dismiss, {passive:false});
-          overlay.addEventListener("touchstart", dismiss, {passive:false});
-          document.addEventListener("keydown",   onKey,   {once:true});
-        } else {
-          var ld=document.getElementById("loading");
-          if(ld) ld.textContent=text.replace(/\(.*?\)/g,"").trim()||"LOADING…";
-        }
-      },
-      totalDependencies:0,
-      remainingDependencies:0,
-      monitorRunDependencies:function(left){
-        this.remainingDependencies=left;
-        this.totalDependencies=Math.max(this.totalDependencies,left);
-        Module.setStatus(left?"Loading…":"");
+    <script type='text/javascript'>
+      function goFullScreen(){
+            var canvas = document.getElementById("canvas");
+            if(canvas.requestFullScreen)
+                canvas.requestFullScreen();
+            else if(canvas.webkitRequestFullScreen)
+                canvas.webkitRequestFullScreen();
+            else if(canvas.mozRequestFullScreen)
+                canvas.mozRequestFullScreen();
       }
-    };
-    Module.setStatus("Loading…");
-    window.onerror=function(){Module.setStatus("Error — check console");};
-  </script>
-  <script src="game.js"></script>
-  <script async src="love.js" onload="Love(Module)"></script>
-</body>
+      function FullScreenHook(){
+        var canvas = document.getElementById("canvas");
+        canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+        canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+      }
+      var loadingContext = document.getElementById('loadingCanvas').getContext('2d');
+      function drawLoadingText(text) {
+        var canvas = loadingContext.canvas;
+
+        loadingContext.fillStyle = "rgb(142, 195, 227)";
+        loadingContext.fillRect(0, 0, canvas.scrollWidth, canvas.scrollHeight);
+
+        loadingContext.font = '2em arial';
+        loadingContext.textAlign = 'center'
+        loadingContext.fillStyle = "rgb( 11, 86, 117 )";
+        loadingContext.fillText(text, canvas.scrollWidth / 2, canvas.scrollHeight / 2);
+
+        loadingContext.fillText("Powered By Emscripten.", canvas.scrollWidth / 2, canvas.scrollHeight / 4);
+        loadingContext.fillText("Powered By LÖVE.", canvas.scrollWidth / 2, canvas.scrollHeight / 4 * 3);
+      }
+
+      window.onload = function () { window.focus(); };
+      window.onclick = function () { window.focus(); };
+
+      window.addEventListener("keydown", function(e) {
+        // space and arrow keys
+        if([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) {
+          e.preventDefault();
+        }
+      }, false);
+
+      var Module = {
+        arguments: ["./game.love"],
+        INITIAL_MEMORY: 67108864,
+        printErr: console.error.bind(console),
+        canvas: (function() {
+          var canvas = document.getElementById('canvas');
+
+          // As a default initial behavior, pop up an alert when webgl context is lost. To make your
+          // application robust, you may want to override this behavior before shipping!
+          // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
+          canvas.addEventListener("webglcontextlost", function(e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+
+          return canvas;
+        })(),
+        setStatus: function(text) {
+          if (text) {
+            drawLoadingText(text);
+          } else if (Module.remainingDependencies === 0) {
+            document.getElementById('loadingCanvas').style.display = 'none';
+            document.getElementById('canvas').style.visibility = 'visible';
+          }
+        },
+        totalDependencies: 0,
+        remainingDependencies: 0,
+        monitorRunDependencies: function(left) {
+          this.remainingDependencies = left;
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+        }
+      };
+      Module.setStatus('Downloading...');
+      window.onerror = function(event) {
+        // TODO: do not warn on ok events like simulating an infinite loop or exitStatus
+        Module.setStatus('Exception thrown, see JavaScript console');
+        Module.setStatus = function(text) {
+          if (text) Module.printErr('[post-exception status] ' + text);
+        };
+      };
+
+      var applicationLoad = function(e) {
+        Love(Module);
+      }
+    </script>
+    <script type="text/javascript" src="game.js"></script>
+    <script async type="text/javascript" src="love.js" onload="applicationLoad(this)"></script>
+    <footer>
+      <p>Built with <a href="https://github.com/Davidobot/love.js">love.js</a> <button onclick="goFullScreen();">Go Fullscreen</button><br>Hint: Reload the page if screen is blank</p>
+    </footer>
+  </body>
 </html>
