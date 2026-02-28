@@ -1,0 +1,64 @@
+name: Notify Release
+
+on:
+  push:
+    branches: [ web-build ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version override (e.g. 0.2)
+        required: false
+        default: ''
+      changelog:
+        description: Release notes
+        required: false
+        default: ''
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: |
+          FILE_VERSION=$(cat .github/VERSION 2>/dev/null | tr -d '[:space:]' || echo "0.1")
+          OVERRIDE="${{ inputs.version }}"
+          echo "value=${OVERRIDE:-$FILE_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Notify Discord
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          VERSION: ${{ steps.version.outputs.value }}
+          RELEASE_URL: https://junerhobart.github.io/operation-shuriken/
+          CHANGELOG: ${{ github.event.head_commit.message || inputs.changelog || '' }}
+        run: |
+          python3 -c "
+          import urllib.request, json, os, sys
+          webhook = os.environ.get('DISCORD_WEBHOOK', '').strip()
+          if not webhook:
+            print('No webhook configured, skipping.')
+            sys.exit(0)
+          version = os.environ.get('VERSION', '')
+          changelog = os.environ.get('CHANGELOG', '').strip()
+          release_url = os.environ.get('RELEASE_URL', '')
+          parts = [f'**Operation: Shuriken v{version} is live!**']
+          if changelog:
+            parts.append(changelog)
+          parts.append(f'<{release_url}>')
+          content = (chr(10) + chr(10)).join(parts)
+          body = json.dumps({'content': content}).encode()
+          headers = {
+            'Content-Type': 'application/json',
+            'User-Agent': 'OperationShuriken-GitHubAction/1.0'
+          }
+          req = urllib.request.Request(webhook, data=body, headers=headers)
+          try:
+            res = urllib.request.urlopen(req)
+            print('Discord notified. Status:', res.status)
+          except urllib.error.HTTPError as e:
+            print('Discord error:', e.code, e.reason, e.read().decode())
+            sys.exit(1)
+          "
