@@ -1,0 +1,184 @@
+---
+globals:
+  love:
+    any: true
+  world:
+    any: true
+  player:
+    any: true
+  particleSystem:
+    any: true
+  state:
+    any: true
+  prevState:
+    any: true
+  optionsTab:
+    any: true
+  fonts:
+    any: true
+  buttons:
+    any: true
+  shake:
+    any: true
+  victory:
+    any: true
+  victoryTime:
+    any: true
+  deathTime:
+    any: true
+  deathPending:
+    any: true
+  victoryButtons:
+    any: true
+  prevButtonStates:
+    any: true
+  camX:
+    any: true
+  camY:
+    any: true
+  camZoom:
+    any: true
+  menuTime:
+    any: true
+  optionsTime:
+    any: true
+  isDevMode:
+    any: true
+  _switchLock:
+    any: true
+  currentLevel:
+    any: true
+  completedLevels:
+    any: true
+  lsDrag:
+    any: true
+  levelSelectTime:
+    any: true
+  levelSelectScroll:
+    any: true
+  storyTime:
+    any: true
+  storyType:
+    any: true
+  levelTransition:
+    any: true
+  transitionDir:
+    any: true
+  activeTouches:
+    any: true
+  pinchDist0:
+    any: true
+  pinchZoom0:
+    any: true
+  pendingDragX:
+    any: true
+  pendingDragY:
+    any: true
+  DRAG_THRESHOLD:
+    any: true
+  settings:
+    any: true
+  speedrunTime:
+    any: true
+  speedrunMoveTime:
+    any: true
+  resIndex:
+    any: true
+  editor:
+    any: true
+  EDITOR_COLORS:
+    any: true
+  UI_BASE_H:
+    any: true
+  commitPendingSnap:
+    any: true
+  drawButton:
+    any: true
+  drawDeath:
+    any: true
+  drawEditorUI:
+    any: true
+  drawLetterbox:
+    any: true
+  drawLevelSelect:
+    any: true
+  drawMainMenu:
+    any: true
+  drawOptions:
+    any: true
+  drawStory:
+    any: true
+  drawVictory:
+    any: true
+  easeInQuad:
+    any: true
+  easeOutBounce:
+    any: true
+  editorKeyPressed:
+    any: true
+  editorMouseMoved:
+    any: true
+  editorMousePressed:
+    any: true
+  editorMouseReleased:
+    any: true
+  editorTextInput:
+    any: true
+  getMouseWorld:
+    any: true
+  getUIScale:
+    any: true
+  initAudio:
+    any: true
+  isLevelUnlocked:
+    any: true
+  levelSelectNodePositions:
+    any: true
+  levelSelectPanelGeom:
+    any: true
+  levelsModule:
+    any: true
+  loadLevel:
+    any: true
+  loadProgress:
+    any: true
+  loadSettings:
+    any: true
+  music:
+    any: true
+  particleModule:
+    any: true
+  playMusic:
+    any: true
+  playerModule:
+    any: true
+  pointInRect:
+    any: true
+  pushUndo:
+    any: true
+  resetGame:
+    any: true
+  resetMenu:
+    any: true
+  saveProgress:
+    any: true
+  saveSettings:
+    any: true
+  sounds:
+    any: true
+  takeSnapshot:
+    any: true
+  unlockAudio:
+    any: true
+  updateButton:
+    any: true
+  utf8len:
+    any: true
+  worldModule:
+    any: true
+  C:
+    any: true
+  physics:
+    any: true
+  drawGame:
+    any: true

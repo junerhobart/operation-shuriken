@@ -38,12 +38,19 @@ jobs:
 
       - name: Get coi-serviceworker
         run: |
-          curl -sL "https://cdn.jsdelivr.net/npm/coi-serviceworker/coi-serviceworker.min.js" \
-            -o /tmp/web-output/coi-serviceworker.js
+          COI_PATH=$(npm root -g)/love.js/src/coi-serviceworker.js
+          if [ -f "$COI_PATH" ]; then
+            cp "$COI_PATH" /tmp/web-output/coi-serviceworker.js
+          elif [ ! -f /tmp/web-output/coi-serviceworker.js ]; then
+            curl -sL "https://cdn.jsdelivr.net/npm/coi-serviceworker/coi-serviceworker.min.js" \
+              -o /tmp/web-output/coi-serviceworker.js
+          fi
 
       - name: Deploy to web-build
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
+          VERSION=$(cat .github/VERSION | tr -d '[:space:]')
+          cp .github/VERSION /tmp/game-version
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin web-build
@@ -55,7 +62,8 @@ jobs:
           cp /tmp/web-output/love.worker.js .
           cp /tmp/web-output/coi-serviceworker.js .
           cp .github/web/index.html .
+          cp /tmp/game-version .github/VERSION
           touch .nojekyll
           git add -A
-          git diff --cached --quiet || git commit -m "Web build from main@$SHORT_SHA"
+          git diff --cached --quiet || git commit -m "Web build v$VERSION from main@$SHORT_SHA"
           git push origin web-build

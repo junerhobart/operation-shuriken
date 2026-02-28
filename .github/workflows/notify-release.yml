@@ -3,6 +3,7 @@ name: Notify Release
 on:
   push:
     branches: [ web-build ]
+    paths: [ '.github/VERSION' ]
   workflow_dispatch:
     inputs:
       version:

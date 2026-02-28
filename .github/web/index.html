@@ -3,55 +3,120 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, minimum-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
     <title>Operation Shuriken</title>
-    <link rel="stylesheet" type="text/css" href="theme/love.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jersey+25&display=swap" rel="stylesheet">
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      html, body {
+        width: 100%; height: 100%;
+        overflow: hidden;
+        background: #edeae3;
+        font-family: 'Jersey 25', arial, sans-serif;
+      }
+
+      #canvas {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        display: block;
+        border: none;
+        padding: 0;
+        visibility: hidden;
+      }
+
+      #loading-overlay {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: #edeae3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        z-index: 10;
+        pointer-events: none;
+      }
+
+      #loading-title {
+        font-size: 52px;
+        color: #1a1917;
+        letter-spacing: 0.04em;
+        line-height: 1;
+      }
+
+      #loading-bar-track {
+        width: 200px;
+        height: 2px;
+        background: #ccc9c2;
+      }
+
+      #loading-bar-fill {
+        height: 100%;
+        background: #1a1917;
+        width: 0%;
+        transition: width 0.2s ease;
+      }
+
+      #loading-status {
+        font-size: 16px;
+        color: #75736e;
+        letter-spacing: 0.06em;
+      }
+
+      #error-box {
+        position: fixed;
+        top: 20px; left: 50%; transform: translateX(-50%);
+        background: #1a1917;
+        color: #edeae3;
+        padding: 12px 20px;
+        max-width: 560px;
+        width: calc(100vw - 40px);
+        font-size: 14px;
+        line-height: 1.5;
+        letter-spacing: 0.02em;
+        z-index: 100;
+        display: none;
+        text-align: left;
+      }
+    </style>
   </head>
   <body>
     <script src="coi-serviceworker.js"></script>
-    <center>
-      <div>
-        <h1>Operation Shuriken</h1>
-        <div id="error-box" style="display:none;color:#8b0000;background:#fff0f0;border:1px solid #c00;padding:10px 14px;max-width:800px;text-align:left;border-radius:4px;margin:8px auto;font-size:13px;line-height:1.5;"></div>
-        <canvas id="loadingCanvas" oncontextmenu="event.preventDefault()" width="800" height="600"></canvas>
-        <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
-      </div>
-    </center>
 
-    <script type='text/javascript'>
+    <div id="loading-overlay">
+      <div id="loading-title">OPERATION SHURIKEN</div>
+      <div id="loading-bar-track"><div id="loading-bar-fill"></div></div>
+      <div id="loading-status">loading</div>
+    </div>
+    <div id="error-box"></div>
+    <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+
+    <script type="text/javascript">
       function goFullScreen() {
-        var canvas = document.getElementById("canvas");
-        if (canvas.requestFullScreen) canvas.requestFullScreen();
-        else if (canvas.webkitRequestFullScreen) canvas.webkitRequestFullScreen();
-        else if (canvas.mozRequestFullScreen) canvas.mozRequestFullScreen();
+        var c = document.getElementById("canvas");
+        if (c.requestFullScreen) c.requestFullScreen();
+        else if (c.webkitRequestFullScreen) c.webkitRequestFullScreen();
+        else if (c.mozRequestFullScreen) c.mozRequestFullScreen();
       }
 
       function FullScreenHook() {
-        var canvas = document.getElementById("canvas");
-        canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-        canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+        var c = document.getElementById("canvas");
+        c.width  = window.innerWidth  || document.documentElement.clientWidth  || document.body.clientWidth;
+        c.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
       }
 
       function showError(msg) {
         var box = document.getElementById("error-box");
         box.style.display = "block";
-        box.innerHTML = "<strong>Something went wrong:</strong> " + msg;
+        box.innerHTML = "<strong>Error:</strong> " + msg;
       }
 
-      var loadingCtx = document.getElementById("loadingCanvas").getContext("2d");
-      function drawLoadingText(text) {
-        var canvas = loadingCtx.canvas;
-        loadingCtx.fillStyle = "rgb(142, 195, 227)";
-        loadingCtx.fillRect(0, 0, canvas.scrollWidth, canvas.scrollHeight);
-        loadingCtx.font = "2em arial";
-        loadingCtx.textAlign = "center";
-        loadingCtx.fillStyle = "rgb(11, 86, 117)";
-        loadingCtx.fillText(text, canvas.scrollWidth / 2, canvas.scrollHeight / 2);
-        loadingCtx.fillText("Powered By Emscripten.", canvas.scrollWidth / 2, canvas.scrollHeight / 4);
-        loadingCtx.fillText("Powered By LÖVE.", canvas.scrollWidth / 2, canvas.scrollHeight / 4 * 3);
-      }
-
-      window.onload = function () { window.focus(); };
+      window.onload  = function () { window.focus(); };
       window.onclick = function () { window.focus(); };
       window.addEventListener("keydown", function (e) {
         if ([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) e.preventDefault();
@@ -62,20 +127,31 @@
         INITIAL_MEMORY: 67108864,
         printErr: console.error.bind(console),
         canvas: (function () {
-          var canvas = document.getElementById("canvas");
-          canvas.addEventListener("webglcontextlost", function (e) {
-            showError("WebGL context lost. Reload the page.");
+          var c = document.getElementById("canvas");
+          c.width  = window.innerWidth;
+          c.height = window.innerHeight;
+          c.addEventListener("webglcontextlost", function (e) {
+            showError("WebGL context lost — reload the page.");
             e.preventDefault();
           }, false);
-          return canvas;
+          return c;
         })(),
         setStatus: function (text) {
-          if (text) {
-            drawLoadingText(text);
-          } else if (Module.remainingDependencies === 0) {
-            document.getElementById("loadingCanvas").style.display = "none";
-            document.getElementById("canvas").style.visibility = "visible";
+          var overlay = document.getElementById("loading-overlay");
+          var status  = document.getElementById("loading-status");
+          var bar     = document.getElementById("loading-bar-fill");
+
+          if (!text) {
+            if (Module.remainingDependencies === 0) {
+              overlay.style.display = "none";
+              document.getElementById("canvas").style.visibility = "visible";
+            }
+            return;
           }
+
+          status.textContent = text.toLowerCase();
+          var m = text.match(/\((\d+)\/(\d+)\)/);
+          if (m) bar.style.width = Math.round((+m[1] / +m[2]) * 100) + "%";
         },
         totalDependencies: 0,
         remainingDependencies: 0,
@@ -89,37 +165,43 @@
         }
       };
 
-      Module.setStatus("Downloading...");
+      Module.setStatus("downloading");
 
       window.onerror = function (msg, src, line, col, err) {
         var text = (err && err.message) ? err.message : String(msg);
         if (text.indexOf("SharedArrayBuffer") !== -1) {
-          showError(
-            "SharedArrayBuffer unavailable. The page needs Cross-Origin Isolation headers to run. " +
-            "<strong>Reload once</strong> — the service worker activates on the second load."
-          );
-        } else {
-          showError(text + " (see browser console for details)");
+          document.getElementById("loading-status").textContent = "activating...";
+          var now = Date.now();
+          var n = 0;
+          try {
+            var st = JSON.parse(sessionStorage.getItem("sab_state") || "{}");
+            if (st.t && (now - st.t) < 15000) n = st.n || 0;
+          } catch (e) {}
+          if (n < 3) {
+            try { sessionStorage.setItem("sab_state", JSON.stringify({ n: n + 1, t: now })); } catch (e) {}
+            if (navigator.serviceWorker) {
+              navigator.serviceWorker.addEventListener("controllerchange", function () { location.reload(); });
+            }
+            setTimeout(function () { location.reload(); }, 2000);
+          } else {
+            showError(
+              "SharedArrayBuffer unavailable. Try Chrome, Edge, or Firefox. " +
+              "Safari 15.2+ is required. Private/Incognito mode may also block this."
+            );
+          }
+          return;
         }
+        showError(text + " (see browser console for details)");
         Module.setStatus = function (t) {
           if (t) Module.printErr("[post-exception] " + t);
         };
       };
 
-      var applicationLoad = function (e) {
-        Love(Module);
-      };
+      var applicationLoad = function () { Love(Module); };
+      try { sessionStorage.removeItem("sab_state"); } catch (e) {}
     </script>
 
     <script type="text/javascript" src="game.js"></script>
-    <script async type="text/javascript" src="love.js" onload="applicationLoad(this)"></script>
-
-    <footer>
-      <p>
-        Built with <a href="https://github.com/Davidobot/love.js">love.js</a>
-        &nbsp;<button onclick="goFullScreen();">Go Fullscreen</button>
-        <br>Hint: Reload the page if the screen is blank
-      </p>
-    </footer>
+    <script async type="text/javascript" src="love.js" onload="applicationLoad()"></script>
   </body>
 </html>
