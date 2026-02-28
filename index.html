@@ -169,6 +169,16 @@
 
       window.onerror = function (msg, src, line, col, err) {
         var text = (err && err.message) ? err.message : String(msg);
+        if (text.indexOf("SharedArrayBuffer") !== -1) {
+          if (!sessionStorage.getItem("sab_reloaded")) {
+            sessionStorage.setItem("sab_reloaded", "1");
+            document.getElementById("loading-status").textContent = "activating...";
+            setTimeout(function () { location.reload(); }, 800);
+          } else {
+            showError("SharedArrayBuffer unavailable. Try a different browser or disable shields/privacy mode.");
+          }
+          return;
+        }
         showError(text + " (see browser console for details)");
         Module.setStatus = function (t) {
           if (t) Module.printErr("[post-exception] " + t);
@@ -176,31 +186,9 @@
       };
 
       var applicationLoad = function () { Love(Module); };
-
-      function loadGame() {
-        var s1 = document.createElement("script");
-        s1.src = "game.js";
-        s1.onload = function () {
-          var s2 = document.createElement("script");
-          s2.async = true;
-          s2.src = "love.js";
-          s2.onload = applicationLoad;
-          document.body.appendChild(s2);
-        };
-        document.body.appendChild(s1);
-      }
-
-      if (self.crossOriginIsolated) {
-        loadGame();
-      } else {
-        document.getElementById("loading-status").textContent = "activating...";
-        if (navigator.serviceWorker) {
-          navigator.serviceWorker.addEventListener("controllerchange", function () {
-            location.reload();
-          });
-        }
-        setTimeout(function () { location.reload(); }, 5000);
-      }
     </script>
+
+    <script type="text/javascript" src="game.js"></script>
+    <script async type="text/javascript" src="love.js" onload="applicationLoad()"></script>
   </body>
 </html>
