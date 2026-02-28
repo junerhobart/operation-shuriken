@@ -1,9 +1,9 @@
-# Operation Shurkin
+# Operation Shuriken
 
 A small hobby puzzle game about fast movement and drag-to-aim shuriken throws. Built for long, brain-first levels with a cozy vibe and quick resets.
 
 <p align="center">
-  <img src="docs/media/banner.gif" alt="Operation Shurkin banner" width="900" />
+  <img src="docs/media/banner.gif" alt="Operation Shuriken banner" width="900" />
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@ A small hobby puzzle game about fast movement and drag-to-aim shuriken throws. B
 
 ## What it is
 
-Operation Shurkin is a personal/hobby project focused on clean, satisfying, and rewarding gameplay.
+Operation Shuriken is a personal/hobby project focused on clean, satisfying, and rewarding gameplay.
 
 ## Gameplay
 
