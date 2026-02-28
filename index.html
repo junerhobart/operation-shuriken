@@ -66,6 +66,24 @@
         font-size: 16px;
         color: #75736e;
         letter-spacing: 0.06em;
+        transition: opacity 0.3s ease;
+      }
+
+      #start-prompt {
+        font-size: 16px;
+        color: #1a1917;
+        letter-spacing: 0.12em;
+        display: none;
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.25; }
+      }
+
+      #loading-overlay {
+        transition: opacity 0.35s ease;
       }
 
       #error-box {
@@ -105,6 +123,7 @@
       <div id="loading-title">OPERATION SHURIKEN</div>
       <div id="loading-bar-track"><div id="loading-bar-fill"></div></div>
       <div id="loading-status">loading</div>
+      <div id="start-prompt">CLICK TO PLAY</div>
     </div>
     <div id="error-box"></div>
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
@@ -121,6 +140,43 @@
         var c = document.getElementById("canvas");
         c.width  = window.innerWidth  || document.documentElement.clientWidth  || document.body.clientWidth;
         c.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+      }
+
+      function showStartPrompt() {
+        var overlay = document.getElementById("loading-overlay");
+        var status  = document.getElementById("loading-status");
+        var bar     = document.getElementById("loading-bar-fill");
+        var prompt  = document.getElementById("start-prompt");
+
+        bar.style.width = "100%";
+        status.style.opacity = "0";
+        setTimeout(function () { status.style.display = "none"; }, 300);
+        prompt.style.display = "block";
+        overlay.style.pointerEvents = "auto";
+        overlay.style.cursor = "pointer";
+
+        function launch() {
+          overlay.style.pointerEvents = "none";
+          overlay.style.cursor = "";
+          overlay.style.opacity = "0";
+          try {
+            var ctx = new (window.AudioContext || window.webkitAudioContext)();
+            ctx.resume();
+          } catch (e) {}
+          setTimeout(function () {
+            overlay.style.display = "none";
+            document.getElementById("canvas").style.visibility = "visible";
+          }, 350);
+        }
+
+        overlay.addEventListener("click", launch, { once: true });
+        document.addEventListener("keydown", function onKey(e) {
+          if (e.key !== "F5" && e.key !== "F12" && !e.ctrlKey && !e.metaKey) {
+            document.removeEventListener("keydown", onKey);
+            overlay.removeEventListener("click", launch);
+            launch();
+          }
+        });
       }
 
       function showError(msg) {
@@ -156,8 +212,7 @@
 
           if (!text) {
             if (Module.remainingDependencies === 0) {
-              overlay.style.display = "none";
-              document.getElementById("canvas").style.visibility = "visible";
+              showStartPrompt();
             }
             return;
           }
