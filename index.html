@@ -86,7 +86,20 @@
     </style>
   </head>
   <body>
-    <script src="coi-serviceworker.js"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js").then(function (reg) {
+          reg.update();
+          if (!navigator.serviceWorker.controller) {
+            navigator.serviceWorker.addEventListener("controllerchange", function () {
+              location.reload();
+            });
+          }
+        }).catch(function (err) {
+          console.warn("[SW] registration failed:", err);
+        });
+      }
+    </script>
 
     <div id="loading-overlay">
       <div id="loading-title">OPERATION SHURIKEN</div>
@@ -170,25 +183,10 @@
       window.onerror = function (msg, src, line, col, err) {
         var text = (err && err.message) ? err.message : String(msg);
         if (text.indexOf("SharedArrayBuffer") !== -1) {
-          document.getElementById("loading-status").textContent = "activating...";
-          var now = Date.now();
-          var n = 0;
-          try {
-            var st = JSON.parse(sessionStorage.getItem("sab_state") || "{}");
-            if (st.t && (now - st.t) < 15000) n = st.n || 0;
-          } catch (e) {}
-          if (n < 3) {
-            try { sessionStorage.setItem("sab_state", JSON.stringify({ n: n + 1, t: now })); } catch (e) {}
-            if (navigator.serviceWorker) {
-              navigator.serviceWorker.addEventListener("controllerchange", function () { location.reload(); });
-            }
-            setTimeout(function () { location.reload(); }, 2000);
-          } else {
-            showError(
-              "SharedArrayBuffer unavailable. Try Chrome, Edge, or Firefox. " +
-              "Safari 15.2+ is required. Private/Incognito mode may also block this."
-            );
-          }
+          showError(
+            "SharedArrayBuffer unavailable. Try Chrome, Edge, or Firefox. " +
+            "Safari 15.2+ is required. Private/Incognito mode may also block this."
+          );
           return;
         }
         showError(text + " (see browser console for details)");
@@ -198,7 +196,6 @@
       };
 
       var applicationLoad = function () { Love(Module); };
-      try { sessionStorage.removeItem("sab_state"); } catch (e) {}
     </script>
 
     <script type="text/javascript" src="game.js"></script>
