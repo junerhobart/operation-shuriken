@@ -179,10 +179,16 @@
 
       if (typeof SharedArrayBuffer === "undefined") {
         document.getElementById("loading-status").textContent = "activating...";
+        var now = Date.now();
         var attempts = 0;
-        try { attempts = parseInt(sessionStorage.getItem("sab_attempts") || "0"); } catch (e) {}
+        try {
+          var stored = JSON.parse(sessionStorage.getItem("sab_state") || "{}");
+          if (stored.t && (now - stored.t) < 12000) {
+            attempts = stored.n || 0;
+          }
+        } catch (e) {}
         if (attempts < 3) {
-          try { sessionStorage.setItem("sab_attempts", String(attempts + 1)); } catch (e) {}
+          try { sessionStorage.setItem("sab_state", JSON.stringify({ n: attempts + 1, t: now })); } catch (e) {}
           if (navigator.serviceWorker) {
             navigator.serviceWorker.addEventListener("controllerchange", function () {
               location.reload();
@@ -197,7 +203,7 @@
           );
         }
       } else {
-        try { sessionStorage.removeItem("sab_attempts"); } catch (e) {}
+        try { sessionStorage.removeItem("sab_state"); } catch (e) {}
         var s1 = document.createElement("script");
         s1.src = "game.js";
         s1.onload = function () {
