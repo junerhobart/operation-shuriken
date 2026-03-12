@@ -1,6 +1,8 @@
 build/
 *.love
 .DS_Store
+node_modules/
+*.luac
+*.log
 
-# Local AI context (never commit)
 .context/

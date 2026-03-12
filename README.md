@@ -1,140 +1,42 @@
-# Operation Shuriken
+# Operation: Shuriken
 
-A small hobby puzzle game about fast movement and drag-to-aim shuriken throws. Built for long, brain-first levels with a cozy vibe and quick resets.
+![](./docs/media/banner.png)
 
-<p align="center">
-  <img src="docs/media/banner.gif" alt="Operation Shuriken banner" width="900" />
-</p>
-
-<p align="center">
-  <a href="#gameplay">Gameplay</a> •
-  <a href="#screenshots">Screenshots</a> •
-  <a href="#running-locally">Run It</a> •
-  <a href="#project-layout">Project Layout</a> •
-  <a href="#web-build">Web Build</a>
-</p>
-
----
-
-## What it is
-
-Operation Shuriken is a personal/hobby project focused on clean, satisfying, and rewarding gameplay.
-
-## Gameplay
-
-**Core input** — Drag to aim, release to throw.
-
-**Level objects**
-- **Breakable walls** — shatter on impact
-- **Buttons** — activated by shuriken hits or crate weight
-- **Pushable blocks** — hold buttons down permanently
-- **Portals** — paired teleporters, objects pass through intact
-- **Spikes** — instant reset on contact
-
-**12 levels** across 3 acts, ramping from simple throws to multi-portal routing puzzles.
-
----
+Physics-based puzzle game: you launch a shuriken by dragging to aim and releasing. Bounce through 12 levels and reach the exit.
 
 ## Screenshots
 
-### Main Menu
-<p align="center">
-  <img src="docs/media/main-menu.png" alt="Main menu" width="700" />
-</p>
+![](./docs/media/main-menu.png)
 
-### In-Game
-<p align="center">
-  <img src="docs/media/in-game.png" alt="In-game screenshot" width="700" />
-</p>
+![](./docs/media/in-game.png)
 
-### Gameplay
-<p align="center">
-  <img src="docs/media/gameplay.gif" alt="Gameplay gif" width="700" />
-</p>
+![](./docs/media/gameplay.gif)
 
----
+## Gameplay
 
-## Running locally
+- **Control:** Drag to aim, release to launch. You bounce off walls and keep momentum. Plan your path.
+- **Level elements:** Breakable walls (smash through at speed), pallets (push onto buttons), buttons (open doors), portals (A/B pairs), spikes (instant death), exit (goal).
+- **Flow:** Level select, pre/post story text per level. Progress is saved in `save.txt`.
 
-Requires [LÖVE 11.5](https://love2d.org/).
+## How to run
 
-```bash
-# Clone the repo
-git clone https://github.com/junerhobart/operation-shuriken.git
-cd operation-shuriken
+- **Desktop:** [LÖVE](https://love2d.org/) 11.4. From the project root: `love .`
+- **Dev mode:** `love . --dev` — enables the level editor (press **E** on the main menu).
+- **Web:** Builds via love.js in CI; playable from the `web-build` branch or wherever that build is deployed.
 
-# Run
-love .
+## Controls
 
-# Run with dev mode (level designer + all levels unlocked)
-love . --dev
-```
+- **Mouse / touch:** Drag to aim and launch. On touch devices, two-finger pinch to zoom.
+- **Keyboard:** **R** = restart level (in game). **Escape** = level select (in game) or back (options). In dev mode, **E** on menu = editor; arrow keys pan the camera in the editor.
 
-### Controls
+## Options
 
-| Input | Action |
-|---|---|
-| Drag + release | Aim and throw |
-| R | Restart level |
-| ESC | Back / level select |
-| Scroll / +− | Zoom |
-| E (dev mode) | Level designer |
+Music/SFX volume, screen shake, drag sensitivity, dark mode, fullscreen, vsync, speedrun timer (active time and total time). Stored in `settings.txt`.
 
-Mobile uses tap and drag throughout.
+## Level editor (dev only)
 
----
+Run with `--dev`, then press **E** on the main menu. Place and edit walls and level elements; arrow keys pan. Drop a `.lua` file onto the game window: if it returns a level table (same shape as the level files in `src/levels/`), the game loads it and starts playing.
 
-## Project layout
+## Stack
 
-```
-main.lua            game loop, state machine, callbacks
-conf.lua            window config, mobile detection
-src/
-  core/
-    globals.lua     global state
-    level.lua       save/load, level management
-    audio.lua       music and sound
-  game/
-    player.lua      movement, drag, trajectory preview
-    world.lua       rendering walls, portals, doors, spikes
-    particles.lua   particle effects
-  ui/
-    handlers.lua    input callbacks
-    menu.lua        main menu
-    levelselect.lua mission select screen
-    story.lua       story + death screens
-    options.lua     settings UI
-    victory.lua     level complete overlay
-    buttons.lua     animated button widget
-    layout.lua      UI scaling, letterbox
-    editor/         level designer (dev mode)
-  levels/
-    init.lua        level registry
-    level1–12.lua   level data
-  utils/
-    constants.lua   physics tuning, colours
-    physics.lua     circle vs AABB collision
-    utils.lua       math helpers
-assets/
-  fonts/            Jersey25
-  audio/            music loops + sound effects
-  images/           shuriken sprite
-```
-
----
-
-## Web build
-
-Built with [love.js](https://github.com/Davidobot/love.js). The `web-build` branch is deployed on GitHub Pages.
-
-```bash
-# Package
-zip -9 -r game.love . -x ".git/*" "build/*" "banner/*" "docs/*" "*.md" ".DS_Store"
-
-# Build
-npx love.js -t "Operation Shuriken" -m 67108864 game.love build/web/
-
-# Serve locally (needs COOP/COEP headers for SharedArrayBuffer)
-python3 build/web/serve.py 8080
-```
-
+LÖVE 11.4, Lua. Custom physics (no LÖVE physics module).
