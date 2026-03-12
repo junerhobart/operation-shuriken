@@ -1,4 +1,4 @@
-var CACHE_KEY = "op-shuriken-e95bf28";
+var CACHE_KEY = "op-shuriken-a0f416b";
 
 self.addEventListener("install", function () { self.skipWaiting(); });
 
